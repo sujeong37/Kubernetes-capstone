@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>버스 도착 정보</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: #e9edf2; color: #14202e; font-family: system-ui, "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  .phone { width: 390px; height: 844px; background: #fff; border-radius: 44px; overflow: hidden;
+           box-shadow: 0 0 0 10px #1c2430, 0 24px 60px rgba(20,32,46,.35); display: flex; flex-direction: column; }
+  @media (max-width: 500px) { body { display: block; } .phone { width: 100%; height: 100vh; border-radius: 0; box-shadow: none; } }
+  header { background: #0d47a1; color: #fff; padding: 48px 20px 16px; }
+  header small { opacity: .8; }
+  header h1 { min-height: 34px; margin: 4px 0 12px; font-size: 22px; display: flex; justify-content: space-between; align-items: center; }
+  .icon { background: none; border: 0; color: #fff; font-size: 22px; cursor: pointer; margin-left: 6px; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 0; font: inherit; }
+  form button { padding: 0 14px; border-radius: 10px; border: 0; background: #fff; color: #0d47a1; font: inherit; font-weight: 700; cursor: pointer; }
+  .chips { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; border-bottom: 1px solid #e4e8ee; min-height: 58px; }
+  .chips button { flex: none; border: 1px solid #e4e8ee; background: #eef3fb; color: #0d47a1; border-radius: 999px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  .chips .hint { color: #6a7686; font-size: 13px; align-self: center; }
+  main { flex: 1; overflow-y: auto; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #e4e8ee; cursor: default; }
+  li.stop { cursor: pointer; }
+  .route { min-width: 58px; padding: 6px 10px; border-radius: 8px; background: #0d47a1; color: #fff; text-align: center; font-weight: 700; }
+  .when { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .soon { color: #d32f2f; }
+  .meta { font-size: 13px; color: #6a7686; }
+  .msg { padding: 40px 24px; text-align: center; color: #6a7686; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <small>버스 도착 정보</small>
+    <h1><span id="title">정류장을 검색하세요</span><span><button id="rename" class="icon" hidden title="별명 수정">✎</button><button id="star" class="icon" hidden title="즐겨찾기">☆</button></span></h1>
+    <form id="search"><input id="q" placeholder="정류장 이름 (예: 북대전)"><button>검색</button></form>
+  </header>
+  <div class="chips" id="favs"></div>
+  <main><ul id="list"></ul><div class="msg" id="msg"></div></main>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  let current = null, buses = [], loadedAt = 0, favorites = [];
+
+  async function api(path, options) {
+    const res = await fetch('/api' + path, options);
+    if (!res.ok) throw new Error(res.status);
+    return res.status === 204 ? null : res.json();
+  }
+
+  // 즐겨찾기 등록 · 수정 · 삭제 요청 후 목록 다시 읽기
+  async function send(method, path, body) {
+    try { await api(path, { method, headers: { 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) }); }
+    catch { alert('저장하지 못했습니다. 잠시 후 다시 시도하세요.'); }
+    loadFavorites();
+  }
+
+  // 즐겨찾기 목록 (DB)
+  async function loadFavorites() {
+    try { favorites = await api('/favorites'); }
+    catch { favorites = []; $('favs').innerHTML = '<span class="hint">즐겨찾기를 불러오지 못했습니다 (DB 확인)</span>'; updateStar(); return; }
+    $('favs').innerHTML = favorites.length ? '' : '<span class="hint">☆를 눌러 즐겨찾기에 추가하세요</span>';
+    for (const f of favorites) {
+      const b = document.createElement('button');
+      b.textContent = f.alias || f.nodeName;
+      b.onclick = () => openStop(f);
+      $('favs').appendChild(b);
+    }
+    updateStar();
+  }
+
+  function updateStar() {
+    const fav = current && favorites.find(f => f.nodeId === current.nodeId);
+    $('star').hidden = !current;
+    $('star').textContent = fav ? '★' : '☆';
+    $('rename').hidden = !fav;
+    if (fav) $('title').textContent = fav.alias || fav.nodeName;
+  }
+
+  // 별명 수정 (DB UPDATE)
+  $('rename').onclick = async () => {
+    const fav = favorites.find(f => f.nodeId === current.nodeId);
+    const alias = prompt('정류장 별명', fav.alias || fav.nodeName);
+    if (!alias || !alias.trim()) return;
+    await send('PUT', '/favorites/' + current.nodeId, { alias: alias.trim() });
+  };
+
+  $('star').onclick = async () => {
+    const on = favorites.some(f => f.nodeId === current.nodeId);
+    if (on) await send('DELETE', '/favorites/' + current.nodeId);
+    else await send('POST', '/favorites', { nodeId: current.nodeId, nodeName: current.nodeName });
+  };
+
+  // 정류장 검색
+  $('search').onsubmit = async e => {
+    e.preventDefault();
+    const name = $('q').value.trim();
+    if (!name) return;
+    current = null; updateStar(); $('title').textContent = '검색 결과';
+    $('list').innerHTML = ''; $('msg').textContent = '검색 중…';
+    try {
+      const stops = await api('/stops?name=' + encodeURIComponent(name));
+      $('msg').textContent = stops.length ? '' : '검색 결과가 없습니다.';
+      for (const s of stops) {
+        const li = document.createElement('li');
+        li.className = 'stop';
+        li.textContent = s.nodeName;
+        li.onclick = () => openStop(s);
+        $('list').appendChild(li);
+      }
+    } catch { $('msg').textContent = '검색에 실패했습니다.'; }
+  };
+
+  // 도착 정보
+  async function openStop(stop) {
+    current = stop;
+    $('title').textContent = stop.nodeName;
+    updateStar();   // 즐겨찾기면 별명으로 표시
+    $('list').innerHTML = ''; $('msg').textContent = '불러오는 중…';
+    await loadArrivals();
+  }
+
+  async function loadArrivals() {
+    const stop = current;
+    if (!stop) return;
+    try {
+      const data = await api('/arrivals/' + stop.nodeId);
+      if (stop !== current) return;            // 그 사이 다른 정류장을 골랐으면 버림
+      buses = data; loadedAt = Date.now(); render();
+    } catch { if (stop === current) $('msg').textContent = '도착 정보를 가져오지 못했습니다.'; }
+  }
+
+  function render() {
+    const passed = Math.floor((Date.now() - loadedAt) / 1000);
+    $('list').innerHTML = '';
+    $('msg').textContent = buses.length ? '' : '도착 예정인 버스가 없습니다.';
+    for (const b of buses) {
+      const left = Math.max(0, b.arrSec - passed);
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="route"></span><div><div class="when"></div><div class="meta"></div></div>';
+      li.querySelector('.route').textContent = b.route;
+      const when = li.querySelector('.when');
+      when.textContent = left < 60 ? '곧 도착' : `${Math.floor(left / 60)}분 ${String(left % 60).padStart(2, '0')}초`;
+      if (left < 60) when.classList.add('soon');
+      li.querySelector('.meta').textContent = `${b.leftStops}정거장 전`;
+      $('list').appendChild(li);
+    }
+  }
+
+  setInterval(loadArrivals, 15000);                         // 15초마다 새로 받아오기
+  setInterval(() => current && buses.length && render(), 1000); // 1초마다 남은 시간 줄이기
+  loadFavorites();
+</script>
+</body>
+</html>
