@@ -32,7 +32,7 @@ flowchart LR
 | 구성 요소 | 소스 위치 | 언어 · 런타임 | 필요한 것 | 포트 | 시작 명령 |
 |---|---|---|---|---|---|
 | Web | `app/web/` | 정적 파일(HTML · JS) | Nginx | 80 | `service nginx start` |
-| APP | `app/was/` | Python 3.9 이상 | fastapi 0.115.6, uvicorn 0.32.1, PyMySQL 1.1.1 | 8000 | `uvicorn app:app --host 127.0.0.1 --port 8000` |
+| APP | `app/was/` | Python 3.9 이상 | fastapi 0.115.6, uvicorn 0.32.1, PyMySQL 1.1.1, cryptography 46.0.3 (1-4에서 추가) | 8000 | `uvicorn app:app --host 127.0.0.1 --port 8000` |
 | DB | `app/db/init.sql` | — | MySQL 8.4 (8.0도 동작) | 3306 | `service mysql start` |
 
 - APP은 컴파일 단계가 없다. "빌드"는 `pip install -r requirements.txt`로 라이브러리를 설치하는 것이다.

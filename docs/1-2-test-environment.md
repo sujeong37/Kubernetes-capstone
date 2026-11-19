@@ -12,7 +12,7 @@
 | Web | Nginx 1.24 (Ubuntu 기본 저장소) | `nginx -v` |
 | DB | MySQL 8.0 (Ubuntu 기본 저장소) | `mysql --version` |
 | APP 런타임 | Python 3.12 (Ubuntu 24.04 기본) + venv | `python3 --version` |
-| APP 라이브러리 | fastapi 0.115.6, uvicorn 0.32.1, PyMySQL 1.1.1 | `pip list` |
+| APP 라이브러리 | fastapi 0.115.6, uvicorn 0.32.1, PyMySQL 1.1.1 (+ cryptography 46.0.3 — 1-4에서 추가) | `pip list` |
 
 ## 2. 설치
 

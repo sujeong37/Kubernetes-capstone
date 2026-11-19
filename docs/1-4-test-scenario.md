@@ -77,3 +77,27 @@ bash tests/scenario.sh http://localhost          # 1단계
 | T8 앞에서 멈추기 | 재시작은 단계마다 방법이 달라서 스크립트가 대신하지 않는다. 사람이 재시작하는 동안 기다린다 |
 | 시작 시 정리, 끝에서 삭제(T9) | 몇 번을 실행해도 같은 결과가 나온다(멱등). 이전 실행의 데이터 때문에 T5가 409로 실패하지 않는다 |
 | curl · bash만 사용 | WSL, EC2 노드 등 어디서나 추가 설치 없이 실행된다 |
+
+## 4. 실행 중 발견한 문제 — 재시작 후 DB 연결 실패 (T8 · T9)
+
+처음 실행에서 T1~T7은 통과했지만, APP과 MySQL을 재시작한 뒤 T8 · T9가 **500 Internal Server Error**로 실패했다(통과 7 / 9).
+
+```
+RuntimeError: 'cryptography' package is required for sha256_password or caching_sha2_password auth methods
+```
+
+| 항목 | 내용 |
+|---|---|
+| 원인 | MySQL 8의 기본 인증 방식 `caching_sha2_password`는 **처음 로그인할 때(서버 재시작 직후 포함)** 비밀번호를 RSA로 암호화해 보내야 한다. PyMySQL은 이 암호화에 `cryptography` 라이브러리가 필요한데 `requirements.txt`에 없었다 |
+| 재시작 전에는 왜 됐나 | 1-3에서 `mysql -h 127.0.0.1 -u bus` 로 한 번 로그인해 서버가 비밀번호 확인 결과를 메모리에 **캐시**했다. 캐시가 있으면 RSA 없이 접속된다. MySQL을 재시작하면 캐시가 비워진다 |
+| 왜 T8에서 드러났나 | T8이 바로 "재시작 후에도 동작하는가"를 보는 항목이다. 시나리오에 재시작을 넣어 두었기 때문에 운영 중에 터질 문제를 1단계에서 찾았다 |
+| 해결 | `requirements.txt` 에 `cryptography==46.0.3` 추가 → `pip install -r requirements.txt` → 시나리오 재실행, 통과 9 / 9 |
+| 검증 | 새 가상환경(cryptography 없음)에서 MySQL 재시작 직후 같은 오류를 재현했고, 추가 후 재시작을 포함한 시나리오가 9 / 9 통과했다 |
+
+| 다른 해결 방법 | 쓰지 않은 이유 |
+|---|---|
+| 계정을 `mysql_native_password` 로 변경 | MySQL 8.0에서 사용 중단 예고, 8.4에서는 기본 비활성화. 2단계부터 `mysql:8.4` 이미지를 쓰므로 그대로 이어 갈 수 없다 |
+| 재시작 후 매번 `mysql` CLI로 한 번 로그인 | 사람이 기억해야 하는 수동 절차다. 컨테이너 · Pod 재시작 때마다 같은 문제가 생긴다 |
+| DB 접속에 SSL 설정 | 같은 컴퓨터 안 통신에 인증서 관리를 추가하는 것은 과하다. 라이브러리 하나로 해결된다 |
+
+2단계 이후에는 이미지 빌드 때 `requirements.txt` 를 그대로 설치하므로 같은 문제가 다시 생기지 않는다.
