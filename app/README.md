@@ -3,8 +3,8 @@
 아래 명령은 모두 저장소의 `app/` 폴더에서 실행한다.
 
 ```bash
-git clone https://github.com/sujeong37/Kubernetes-capstone.git
-cd Kubernetes-capstone/app
+git clone https://github.com/sujeong37/Kubernetes-capstone.git k8s-capstone
+cd k8s-capstone/app
 ```
 
 ```

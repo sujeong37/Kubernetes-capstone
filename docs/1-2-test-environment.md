@@ -26,7 +26,7 @@ sudo service mysql start
 sudo service nginx start
 
 # 2-3. APP 라이브러리를 프로젝트 전용 가상환경(venv)에 설치
-cd ~/Kubernetes-capstone/app/was
+cd ~/k8s-capstone/app/was
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -43,7 +43,7 @@ sudo service nginx status             # * nginx is running
 sudo service mysql status             # ... Server version ... / Uptime
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost/    # 200 (Nginx 기본 페이지)
 sudo mysql -e "SELECT VERSION();"     # 8.0.xx
-~/Kubernetes-capstone/app/was/.venv/bin/pip list | grep -Ei "fastapi|uvicorn|pymysql"
+~/k8s-capstone/app/was/.venv/bin/pip list | grep -Ei "fastapi|uvicorn|pymysql"
 ```
 
 | 확인 항목 | 기대 결과 |
