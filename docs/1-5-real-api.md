@@ -58,7 +58,7 @@ bash tests/scenario.sh http://localhost                        # 같은 시나�
 | 정류장 검색 · 도착 정보 | 실제 정류장 · 실제 노선 번호와 남은 시간 |
 | 실제 서비스와 비교 | 같은 정류장을 지도 앱(카카오맵 등)에서 조회하면 노선 · 남은 시간이 비슷하다 |
 | 시나리오 | 통과 9 / 9 (T3 · T4가 실제 데이터) |
-| 잘못된 인증키 | 화면 "검색에 실패했습니다", API 502, APP 로그에 원인 |
+| 잘못된 인증키 | 화면 "검색에 실패했습니다", API 502, APP 로그에 원인 (실제: `HTTPError: HTTP Error 403: Forbidden`) |
 
 - 심야(버스 운행 종료 후)에는 도착 정보가 빈 목록이라 T4가 실패할 수 있다. 버스 운행 시간에 확인한다.
 - 기본 정류장(DJB8001793 북대전농협)이 실제 검색 결과에 없으면, 실제 검색 결과의 정류장으로 `SEARCH=... STOP_ID=... STOP_NAME=... bash tests/scenario.sh http://localhost` 를 실행한다.
@@ -90,4 +90,17 @@ bash tests/scenario.sh http://localhost                        # 같은 시나�
 | `git pull` 에서 `Could not resolve host: github.com` | WSL의 DNS가 Windows 중계 주소(`nameserver 10.255.255.254`)를 쓰는데 중계가 응답하지 않았다. `ping 8.8.8.8` 은 성공 → 인터넷은 되고 주소 변환(DNS)만 실패 | `/etc/resolv.conf` 를 지우고 `nameserver 8.8.8.8`, `1.1.1.1` 로 직접 지정. 계속 유지하려면 `/etc/wsl.conf` 에 `[network] generateResolvConf = false` |
 | 정류장 검색이 두 번 502, 세 번째에 200 (아무것도 안 바꿈) | APP 로그 `TAGO 호출 실패 (getSttnNoList): TimeoutError: The read operation timed out` — 공공 API 응답이 5초를 넘었다 | 이번에 추가한 실패 원인 로그로 원인을 바로 확인했다. `fetch()` 에 1회 재시도 추가 |
 | 실제 검색 결과에 기본 정류장(북대전농협 DJB8001793)이 없음 | 가짜 데이터의 정류장이 실제 데이터와 다름. 실제 "북대전" 검색 결과: 북대전IC네거리(DJB8001320, DJB8001321), KT북대전지사(DJB8001795), 북대전세무서/보훈요양원(DJB8002739, DJB8002740) | 시나리오를 `SEARCH` · `STOP_ID` · `STOP_NAME` 으로 실제 정류장 지정 |
-| 같은 이름의 정류장이 두 개 (북대전IC네거리 등) | 길 건너편(방향별) 정류장은 이름이 같고 ID가 다르다 | 화면에서 구분이 안 됨 → 정류소 번호 표시 개선 후보 |
+| 같은 이름의 정류장이 두 개 (북대전IC네거리 등) | 길 건너편(방향별) 정류장은 이름이 같고 ID가 다르다 | 정류소 번호(`nodeno`, 정류장 표지판의 번호)를 함께 표시 — 아래 7 |
+
+실제 잘못된 인증키 결과: 공공데이터포털은 등록되지 않은 키에 **HTTP 403 Forbidden** 으로 응답했다. APP 로그 `TAGO 호출 실패 (getSttnNoList): HTTPError: HTTP Error 403: Forbidden` — 거절 응답이므로 재시도하지 않고 바로 502.
+
+## 7. 후속 개선 — 정류소 번호 표시
+
+| 파일 | 변경 |
+|---|---|
+| `app/was/app.py` | `/api/stops` 응답에 `nodeNo`(공공 API `nodeno`) 추가. 가짜 데이터에도 번호 추가. 번호가 없는 정류장은 `null` |
+| `app/web/html/index.html` | 검색 결과 오른쪽에 "41150번"처럼 정류소 번호 표시, 정류장 제목을 "이름 (번호)"로 표시, 즐겨찾기 등록 시 이름에 번호를 붙여 저장(같은 이름 즐겨찾기 구분) |
+
+- DB 구조는 바꾸지 않았다(이름 칸에 "이름 (번호)" 저장).
+- 확인: 같은 이름 두 정류장(북대전IC네거리 41150 / 41151)이 목록에서 번호로 구분되고, 즐겨찾기 버튼도 "북대전IC네거리 (41151)"로 표시. 시나리오 9 / 9 (가짜 · 흉내 낸 실제 데이터 모두).
+- 1단계(WSL)에서 화면에 반영하려면 `sudo cp app/web/html/index.html /var/www/bus-app/` 후 APP 재시작. 2단계 이미지는 이 소스로 빌드한다.

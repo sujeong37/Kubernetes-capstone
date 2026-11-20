@@ -80,10 +80,10 @@ def call_tago(path: str, **params) -> list[dict]:
 
 
 # ---------- 가짜 데이터 (인증키가 없을 때) ----------
-FAKE_STOPS = [
-    {"nodeId": "DJB8001793", "nodeName": "북대전농협"},
-    {"nodeId": "DJB8002011", "nodeName": "성북3통"},
-    {"nodeId": "DJB8005901", "nodeName": "대전역"},
+FAKE_STOPS = [   # nodeNo: 정류소 번호 (정류장 표지판의 번호. 같은 이름의 길 건너편 정류장을 구분한다)
+    {"nodeId": "DJB8001793", "nodeName": "북대전농협", "nodeNo": "41520"},
+    {"nodeId": "DJB8002011", "nodeName": "성북3통", "nodeNo": "42011"},
+    {"nodeId": "DJB8005901", "nodeName": "대전역", "nodeNo": "45901"},
 ]
 
 
@@ -109,7 +109,8 @@ def search_stops(name: str = Query(min_length=1, max_length=30)):
     if not SERVICE_KEY:
         return [s for s in FAKE_STOPS if name in s["nodeName"]]
     items = call_tago("BusSttnInfoInqireService/getSttnNoList", nodeNm=name)
-    return [{"nodeId": i["nodeid"], "nodeName": i["nodenm"]} for i in items]
+    return [{"nodeId": i["nodeid"], "nodeName": i["nodenm"],
+             "nodeNo": str(i["nodeno"]) if i.get("nodeno") else None} for i in items]
 
 
 @app.get("/api/arrivals/{node_id}")

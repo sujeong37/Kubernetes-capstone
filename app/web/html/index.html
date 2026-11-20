@@ -25,6 +25,7 @@
   ul { list-style: none; margin: 0; padding: 0; }
   li { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #e4e8ee; cursor: default; }
   li.stop { cursor: pointer; }
+  .no { color: #6a7686; font-size: 13px; margin-left: auto; }
   .route { min-width: 58px; padding: 6px 10px; border-radius: 8px; background: #0d47a1; color: #fff; text-align: center; font-weight: 700; }
   .when { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .soon { color: #d32f2f; }
@@ -92,7 +93,7 @@
   $('star').onclick = async () => {
     const on = favorites.some(f => f.nodeId === current.nodeId);
     if (on) await send('DELETE', '/favorites/' + current.nodeId);
-    else await send('POST', '/favorites', { nodeId: current.nodeId, nodeName: current.nodeName });
+    else await send('POST', '/favorites', { nodeId: current.nodeId, nodeName: label(current) });
   };
 
   // 정류장 검색
@@ -109,6 +110,11 @@
         const li = document.createElement('li');
         li.className = 'stop';
         li.textContent = s.nodeName;
+        if (s.nodeNo) {                         // 같은 이름(길 건너편) 정류장을 구분하는 정류소 번호
+          const no = document.createElement('span');
+          no.className = 'no'; no.textContent = s.nodeNo + '번';
+          li.appendChild(no);
+        }
         li.onclick = () => openStop(s);
         $('list').appendChild(li);
       }
@@ -116,9 +122,12 @@
   };
 
   // 도착 정보
+  // 정류장 이름 + 정류소 번호 (번호가 없으면 이름만)
+  const label = s => s.nodeNo ? `${s.nodeName} (${s.nodeNo})` : s.nodeName;
+
   async function openStop(stop) {
     current = stop;
-    $('title').textContent = stop.nodeName;
+    $('title').textContent = label(stop);
     updateStar();   // 즐겨찾기면 별명으로 표시
     $('list').innerHTML = ''; $('msg').textContent = '불러오는 중…';
     await loadArrivals();
