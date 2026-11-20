@@ -1,6 +1,0 @@
-# 1단계(WSL 직접 실행)용 설정. 이미지는 default.conf.template 을 쓴다
-nginx.conf
-
-# 이미지 빌드에 사용하지 않는 파일
-Dockerfile
-.dockerignore

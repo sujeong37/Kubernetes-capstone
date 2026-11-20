@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 2단계: DB → APP → Web 컨테이너를 순서대로 실행한다 (2-2 Runbook 4~6단계의 명령을 모은 것).
+# 2단계: DB → APP → Web 컨테이너를 순서대로 실행한다 (2-6 Runbook의 명령을 모은 것. 2-5 완성 이미지 기준으로 2-6에서 갱신한다).
 #
 # 사용법:  bash docker/up.sh            (이미지 태그 basic)
 #          TAG=opt bash docker/up.sh    (다른 태그의 이미지로 실행)
