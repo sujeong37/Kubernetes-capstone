@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -43,12 +44,25 @@ app = FastAPI(title="bus-was")
 
 
 # ---------- 공공데이터 API ----------
+def fetch(url: str, name: str) -> str:
+    """공공 API 응답 본문. 응답이 늦거나 연결이 끊기면 한 번만 다시 시도한다 (최대 5초 x 2)."""
+    for attempt in (1, 2):
+        try:
+            with urllib.request.urlopen(url, timeout=5) as res:
+                return res.read().decode("utf-8")
+        except urllib.error.HTTPError:            # 401 등 서버가 거절한 응답은 다시 시도해도 같다
+            raise
+        except (TimeoutError, urllib.error.URLError) as e:
+            if attempt == 2:
+                raise
+            print(f"TAGO 응답 지연 ({name}) — 한 번 더 시도: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+
 def call_tago(path: str, **params) -> list[dict]:
     """TAGO API 공통 호출. 결과(item) 목록을 돌려준다."""
     params.update(serviceKey=SERVICE_KEY, cityCode=CITY_CODE, _type="json", numOfRows=50)
     try:
-        with urllib.request.urlopen(f"{TAGO}/{path}?{urllib.parse.urlencode(params)}", timeout=5) as res:
-            raw = res.read().decode("utf-8")
+        raw = fetch(f"{TAGO}/{path}?{urllib.parse.urlencode(params)}", path.split('/')[-1])
         try:
             data = json.loads(raw)["response"]
         except ValueError:                        # 인증키 오류 등은 _type=json 이어도 XML로 온다

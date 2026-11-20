@@ -28,6 +28,7 @@
 | 파일 | 변경 | 이유 |
 |---|---|---|
 | `app/was/app.py` `call_tago()` | 호출 실패 원인을 APP 로그(stderr)에 한 줄 남긴다. 인증키 오류처럼 JSON 대신 XML로 오는 응답에서 `returnAuthMsg` 등을 꺼낸다 | 기존에는 사용자에게 502만 보이고 원인을 알 수 없었다. 키 미등록 · 호출 한도 초과 · 네트워크 오류를 로그로 구분한다 |
+| `app/was/app.py` `fetch()` | 응답이 5초 안에 안 오거나 연결이 끊기면 **한 번만** 다시 시도한다 (최대 10초). 401 같은 거절 응답은 다시 시도하지 않는다 | 실제 연동에서 첫 요청이 `TimeoutError` 로 두 번 실패하고 세 번째에 성공했다(아래 6. 겪은 문제). 사용자가 다시 누르지 않아도 되게 한다 |
 | `tests/scenario.sh` | 검색어 · 정류장을 `SEARCH` · `STOP_ID` · `STOP_NAME` 환경 변수로 바꿀 수 있다 (기본값은 그대로) | 실제 데이터에서 다른 정류장으로 확인할 수 있게. 기본 실행은 이전과 완전히 같다 |
 
 로그 예 (인증키가 등록되지 않았을 때):
@@ -75,6 +76,18 @@ bash tests/scenario.sh http://localhost                        # 같은 시나�
 | 호출 한도 초과 (`resultCode` 22) | 502, 로그 `LIMITED NUMBER OF SERVICE REQUESTS EXCEEDS ERROR.` |
 | HTTP 401 | 502, 로그 `HTTP Error 401: Unauthorized` |
 | 인증키에 `+ / =` 포함 | 인코딩되어 정상 전달 |
+| 첫 응답만 6초 지연 | 재시도로 성공 (약 5초 후 200), 로그 `TAGO 응답 지연 ... 한 번 더 시도` |
+| 계속 6초 지연 | 두 번 시도 후 502 (약 10초), 로그 `TimeoutError` |
+| HTTP 401 | 재시도 없이 바로 502 |
 | 로그에 인증키 | 남지 않음 (0건) |
 
 실제 API와의 연동 결과는 Runbook 수행 기록(스크린샷)으로 남긴다.
+
+## 6. 겪은 문제
+
+| 문제 | 원인 | 해결 |
+|---|---|---|
+| `git pull` 에서 `Could not resolve host: github.com` | WSL의 DNS가 Windows 중계 주소(`nameserver 10.255.255.254`)를 쓰는데 중계가 응답하지 않았다. `ping 8.8.8.8` 은 성공 → 인터넷은 되고 주소 변환(DNS)만 실패 | `/etc/resolv.conf` 를 지우고 `nameserver 8.8.8.8`, `1.1.1.1` 로 직접 지정. 계속 유지하려면 `/etc/wsl.conf` 에 `[network] generateResolvConf = false` |
+| 정류장 검색이 두 번 502, 세 번째에 200 (아무것도 안 바꿈) | APP 로그 `TAGO 호출 실패 (getSttnNoList): TimeoutError: The read operation timed out` — 공공 API 응답이 5초를 넘었다 | 이번에 추가한 실패 원인 로그로 원인을 바로 확인했다. `fetch()` 에 1회 재시도 추가 |
+| 실제 검색 결과에 기본 정류장(북대전농협 DJB8001793)이 없음 | 가짜 데이터의 정류장이 실제 데이터와 다름. 실제 "북대전" 검색 결과: 북대전IC네거리(DJB8001320, DJB8001321), KT북대전지사(DJB8001795), 북대전세무서/보훈요양원(DJB8002739, DJB8002740) | 시나리오를 `SEARCH` · `STOP_ID` · `STOP_NAME` 으로 실제 정류장 지정 |
+| 같은 이름의 정류장이 두 개 (북대전IC네거리 등) | 길 건너편(방향별) 정류장은 이름이 같고 ID가 다르다 | 화면에서 구분이 안 됨 → 정류소 번호 표시 개선 후보 |
