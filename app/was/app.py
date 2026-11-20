@@ -17,6 +17,8 @@ DELETE /api/favorites/{nodeId} 즐겨찾기 삭제
 """
 import json
 import os
+import re
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -46,10 +48,17 @@ def call_tago(path: str, **params) -> list[dict]:
     params.update(serviceKey=SERVICE_KEY, cityCode=CITY_CODE, _type="json", numOfRows=50)
     try:
         with urllib.request.urlopen(f"{TAGO}/{path}?{urllib.parse.urlencode(params)}", timeout=5) as res:
-            data = json.load(res)["response"]
-        if data["header"]["resultCode"] != "00":   # 인증 오류, 호출 한도 초과 등
+            raw = res.read().decode("utf-8")
+        try:
+            data = json.loads(raw)["response"]
+        except ValueError:                        # 인증키 오류 등은 _type=json 이어도 XML로 온다
+            msgs = [re.search(rf"<{t}>([^<]+)<", raw) for t in ("returnAuthMsg", "resultMsg", "errMsg")]
+            raise ValueError(next((m.group(1) for m in msgs if m), "JSON이 아닌 응답"))
+        if data["header"]["resultCode"] != "00":   # 호출 한도 초과 등
             raise ValueError(data["header"]["resultMsg"])
-    except Exception:
+    except Exception as e:
+        # 원인은 APP 로그에만 남긴다. 인증키가 들어 있는 주소(URL)는 남기지 않는다
+        print(f"TAGO 호출 실패 ({path.split('/')[-1]}): {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         raise HTTPException(502, "공공 API 호출에 실패했습니다.")
     items = data["body"].get("items") or {}      # 결과가 없으면 "" 로 온다
     item = items.get("item", [])

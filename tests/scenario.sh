@@ -9,10 +9,14 @@
 #
 # T7까지 실행한 뒤 멈춘다. 그동안 APP과 DB를 재시작(3·4단계는 Pod 삭제)하고 Enter를 누르면
 # T8(데이터 유지)과 T9(삭제)를 확인한다. 멈추지 않으려면 WAIT=0 을 앞에 붙인다.
+#
+# 실제 공공 API(인증키)로 확인할 때 정류장을 바꾸려면 (기본값은 가짜 데이터와 같은 정류장):
+#   SEARCH=검색어 STOP_ID=정류장ID STOP_NAME=정류장이름 bash tests/scenario.sh http://localhost
 
 BASE="${1:-http://localhost}"
-STOP="DJB8001793"
-NAME="북대전농협"
+SEARCH="${SEARCH:-북대전}"
+STOP="${STOP_ID:-DJB8001793}"
+NAME="${STOP_NAME:-북대전농협}"
 ALIAS="집 앞"
 PASS=0; FAIL=0
 
@@ -24,6 +28,7 @@ req() {  # req 메서드 경로 [본문] → 응답 본문, 마지막 줄에 상
   curl -s -m 10 -X "$1" "$BASE$2" -H 'Content-Type: application/json' ${3:+-d "$3"} -w '\n%{http_code}'
 }
 code() { tail -n1 <<<"$1"; }
+enc() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$1"; }
 body() { sed '$d' <<<"$1"; }
 
 echo "테스트 대상: $BASE   ($(date '+%Y-%m-%d %H:%M:%S'))"
@@ -35,8 +40,8 @@ check T1 "상태 확인        GET /api/healthz → 200, status ok" $([ "$(code 
 r=$(req GET /)
 check T2 "화면             GET / → 200, 버스 도착 정보" $([ "$(code "$r")" = 200 ] && grep -q '버스 도착 정보' <<<"$(body "$r")"; echo $?) "$(code "$r")"
 
-r=$(req GET "/api/stops?name=%EB%B6%81%EB%8C%80%EC%A0%84")
-check T3 "정류장 검색      GET /api/stops?name=북대전 → $NAME 포함" $([ "$(code "$r")" = 200 ] && grep -q "$NAME" <<<"$(body "$r")"; echo $?) "$(code "$r") $(body "$r")"
+r=$(req GET "/api/stops?name=$(enc "$SEARCH")")
+check T3 "정류장 검색      GET /api/stops?name=$SEARCH → $NAME 포함" $([ "$(code "$r")" = 200 ] && grep -q "$NAME" <<<"$(body "$r")"; echo $?) "$(code "$r") $(body "$r")"
 
 r=$(req GET "/api/arrivals/$STOP")
 check T4 "도착 정보        GET /api/arrivals/$STOP → 버스 목록" $([ "$(code "$r")" = 200 ] && grep -q '"route"' <<<"$(body "$r")"; echo $?) "$(code "$r") $(body "$r")"
