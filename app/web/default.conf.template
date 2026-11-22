@@ -2,7 +2,7 @@
 # Nginx 공식 이미지가 시작할 때 ${APP_ADDR} 를 환경 변수 값으로 바꿔 /etc/nginx/conf.d/default.conf 를 만든다.
 # 1단계(WSL 직접 실행)는 nginx.conf 를 쓴다.
 server {
-    listen 80;
+    listen 8080;   # step2.1: 비root는 1024 아래 포트를 열 수 없다
     root /usr/share/nginx/html;
     index index.html;
 

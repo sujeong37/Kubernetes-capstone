@@ -2,7 +2,7 @@
 # step2: 이미지 2개를 linux/amd64 로 만들어 레지스트리에 올린다.
 #   bash docker/push.sh <Docker Hub 계정>          예) bash docker/push.sh myid
 #   bash docker/push.sh localhost:5001              연습용 내 컴퓨터 레지스트리
-# 태그 2개: step2 (이 단계 최신) + step2-<커밋 7자리> (어느 코드로 만들었는지 고정). latest 는 쓰지 않는다.
+# 태그 2개: step2.1 (이 단계 최신, IMAGE_TAG 로 바꿈) + step2.1-<커밋 7자리> (어느 코드로 만들었는지 고정). latest 는 쓰지 않는다.
 # EKS 노드는 x86_64(amd64)이므로 --platform linux/amd64 로 만든다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 }
 case "$1" in /*|*/) echo "레지스트리/계정은 / 로 시작하거나 끝나지 않는다: '$1'"; exit 1;; esac
 REG="$1"
-TAG="${IMAGE_TAG:-step2}"
+TAG="${IMAGE_TAG:-step2.1}"
 SHA=$(git rev-parse --short HEAD)
 
 for pair in "bus-app:app/was" "bus-web:app/web"; do

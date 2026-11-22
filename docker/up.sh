@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # step2: 네트워크 → DB → APP → Web 순서로 컨테이너 3개를 띄운다.
-#   bash docker/up.sh                                  → 내 컴퓨터의 bus-app:step2 · bus-web:step2
-#   IMAGE_TAG=step2.1 bash docker/up.sh                → 다른 태그
+#   bash docker/up.sh                                  → 내 컴퓨터의 bus-app:step2.1 · bus-web:step2.1 (현재 단계)
+#   IMAGE_TAG=step2 bash docker/up.sh                  → 이전 단계 이미지 (step2.0 의 web 은 컨테이너 포트 80)
 #   IMAGE_PREFIX=<Docker Hub 계정>/ bash docker/up.sh  → 레지스트리의 이미지 (없으면 받아 온다)
 #
 # 비밀번호는 환경 변수 DB_ROOT_PASSWORD · DB_PASSWORD 로 받는다. 없으면 화면에 보이지 않게 입력받는다.
@@ -9,7 +9,9 @@
 # 공공 API 인증키(TAGO_SERVICE_KEY)가 환경 변수에 있으면 APP에 전달하고, 없으면 가짜 데이터로 동작한다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TAG="${IMAGE_TAG:-step2}"
+TAG="${IMAGE_TAG:-step2.1}"
+# web 컨테이너가 듣는 포트: step2.0 은 80(root), step2.1 부터 8080(비root)
+WEB_PORT="${WEB_PORT:-$([ "$TAG" = step2 ] && echo 80 || echo 8080)}"
 PREFIX="${IMAGE_PREFIX:-}"
 
 [ -n "${DB_ROOT_PASSWORD:-}" ] || { read -rsp "DB root 비밀번호: " DB_ROOT_PASSWORD; echo; }
@@ -46,9 +48,9 @@ docker run -d --name app --network bus-net --restart unless-stopped \
   "${PREFIX}bus-app:$TAG" >/dev/null
 wait_healthy app 60
 
-# 3) Web — Nginx는 시작할 때 app 이름을 찾으므로 APP 다음에 띄운다
+# 3) Web — Nginx는 시작할 때 app 이름을 찾으므로 APP 다음에 띄운다. step2.1부터 컨테이너 포트 8080 (비root)
 docker run -d --name web --network bus-net --restart unless-stopped \
-  -p 127.0.0.1:8080:80 \
+  -p "127.0.0.1:8080:$WEB_PORT" \
   "${PREFIX}bus-web:$TAG" >/dev/null
 wait_healthy web 60
 
