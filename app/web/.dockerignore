@@ -1,14 +1,24 @@
-# step2.0 ~ 2.2: 꼭 빼야 할 것만 뺀다 (테스트 · 문서 · Dockerfile 까지 넓게 빼는 것은 step2.3)
+# step2.3: 이미지에 필요 없는 것은 모두 뺀다
+# Web 이미지에 필요한 것: default.conf.template, html/ 뿐
 
-# 비밀 정보 — 이미지에 들어가 레지스트리에 올라가면 누구나 꺼내 볼 수 있다
+# 비밀 정보
 *.pem
 *.key
 *.crt
 .env
 .env.*
 
-# 레포 기록 — 필요 없고 크다
+# 레포 기록 · 편집기 설정
 .git
+.gitignore
+.vscode
+.idea
 
-# 내 컴퓨터(1단계)에 설치한 부품 — 이미지 안에서 새로 설치하므로 섞이면 안 된다
-.venv
+# 1단계(WSL에 직접 설치한 Nginx)용 설정 — 컨테이너는 default.conf.template 을 쓴다
+nginx.conf
+
+# 빌드 설명서 자체 · 문서 · 로그
+Dockerfile
+.dockerignore
+*.md
+*.log
