@@ -13,7 +13,7 @@
 | 단계 | 실행 기반 | 폴더 | 태그 |
 |---|---|---|---|
 | ① 워크로드 테스트 환경 | WSL 2 Ubuntu (직접 설치) | [`app/`](app/) | `stage1-local` |
-| ② 이미지 빌드 · 컨테이너 테스트 | WSL 2 Ubuntu + Docker Engine | `app/was/Dockerfile`, `app/web/Dockerfile` (2-1 단순한 형태 → 2-5 최적화, [`docs/2-*`](docs/)), `docker/` | `stage2-docker` |
+| ② 이미지 빌드 · 컨테이너 테스트 | WSL 2 Ubuntu + Docker Engine | `app/was/Dockerfile`, `app/web/Dockerfile`, `docker/` (step2.0 기본 형태 → 2.1 비root → 2.2 빌드 속도 → 2.3 크기 → 2.4 Compose, [`docs/2.*`](docs/)) | `stage2-docker` |
 | ③ Kubernetes 전환 | AWS EC2 3대 + kubeadm | `k8s/` | `stage3-k8s` |
 | ④ EKS 전환 | Amazon ECR + EKS Auto Mode | `eks/` | `stage4-eks` |
 

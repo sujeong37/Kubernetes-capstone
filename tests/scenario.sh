@@ -9,6 +9,7 @@
 #
 # T7까지 실행한 뒤 멈춘다. 그동안 APP과 DB를 재시작(3·4단계는 Pod 삭제)하고 Enter를 누르면
 # T8(데이터 유지)과 T9(삭제)를 확인한다. 멈추지 않으려면 WAIT=0 을 앞에 붙인다.
+# RESTART_CMD='명령' 을 주면 멈추는 대신 그 명령으로 재시작한다 (예: 2단계 docker/test.sh).
 #
 # 실제 공공 API(인증키)로 확인할 때 정류장을 바꾸려면 (기본값은 가짜 데이터와 같은 정류장):
 #   SEARCH=검색어 STOP_ID=정류장ID STOP_NAME=정류장이름 bash tests/scenario.sh http://localhost
@@ -55,7 +56,11 @@ check T6 "조회             GET /api/favorites → 등록한 정류장" $([ "$(
 r=$(req PUT "/api/favorites/$STOP" "{\"alias\":\"$ALIAS\"}")
 check T7 "수정             PUT /api/favorites/$STOP → alias=$ALIAS" $([ "$(code "$r")" = 200 ] && grep -q "$ALIAS" <<<"$(body "$r")"; echo $?) "$(code "$r") $(body "$r")"
 
-if [ "${WAIT:-1}" != 0 ]; then
+if [ -n "${RESTART_CMD:-}" ]; then
+  echo
+  echo "  ▶ 재시작: $RESTART_CMD"
+  bash -c "$RESTART_CMD" || { echo "  재시작 실패"; exit 1; }
+elif [ "${WAIT:-1}" != 0 ]; then
   echo
   echo "  ▶ 지금 APP과 DB를 재시작(3·4단계는 Pod 삭제)한 뒤, 다시 실행되면 Enter를 누른다."
   read -r _

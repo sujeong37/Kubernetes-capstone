@@ -1,33 +1,29 @@
 # syntax=docker/dockerfile:1
 
-# 2-2 명령어 동작 확인 — 2-1(1단계 절차 그대로)에 Docker Core 4장 02의 명령을 적용했다.
-#   ARG(FROM 앞) · LABEL · EXPOSE · HEALTHCHECK
-# 2-3 ~ 2-5 에서 계속 고친다. (변경 이력: docs/2-*.md)
+# ============================================================================
+# step2.0 기본 형태 — Web (Nginx: 화면 + /api 를 APP으로 넘김)
+# 일부러 가장 단순하게 썼다. 다음 단계에서 하나씩 고치고 전후를 숫자로 비교한다.
+#   - root로 실행된다 (Nginx 마스터 프로세스), 포트 80                → step2.1
+#   - 바탕 이미지가 공식 기본판(Debian)                             → step2.3
+# ============================================================================
 
-# [빌드 인자] 베이스 이미지 태그 (베이스 이미지의 ENV NGINX_VERSION 과 겹치지 않게 _TAG)
-ARG NGINX_TAG=1.30-alpine
+# 바탕 이미지: Nginx 공식 기본판
+FROM nginx:1.30
 
-# 1단계: sudo apt install nginx → 베이스 이미지
-FROM nginx:${NGINX_TAG}
+# 설정 템플릿. 공식 이미지가 시작할 때 ${APP_ADDR} 를 환경 변수 값으로 바꿔 conf.d/default.conf 를 만든다
+COPY default.conf.template /etc/nginx/templates/default.conf.template
 
-# 1단계: sudo cp app/web/nginx.conf /etc/nginx/sites-available/bus-app (+ 기본 사이트 끄기)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# 화면 파일
+COPY html/ /usr/share/nginx/html/
 
-# 1단계: sudo cp app/web/html/index.html /var/www/bus-app/
-COPY html/ /var/www/bus-app/
+# /api 요청을 넘길 APP 주소 (같은 네트워크의 컨테이너 이름:포트). 실행할 때 -e 로 바꿀 수 있다
+ENV APP_ADDR=app:8000
 
-# ---- 실행 설정 ----
-
-LABEL org.opencontainers.image.title="bus-web" \
-      org.opencontainers.image.description="버스 도착 정보 Web (Nginx: 화면 + /api 프록시)" \
-      org.opencontainers.image.source="https://github.com/sujeong37/Kubernetes-capstone"
-
-# [포트 문서화] 베이스 이미지에도 EXPOSE 80 이 있지만, 이 이미지가 받는 포트를 직접 적어 둔다
+# 쓰는 포트
 EXPOSE 80
 
-# [헬스체크] Nginx 자신이 화면(/)에 응답하는지 확인한다. /api 는 APP 상태라 여기서 검사하지 않는다
-#            Alpine 의 busybox wget: 응답 코드가 오류면 종료 코드 1
+# Docker가 10초마다 첫 화면을 요청해 건강한지 판단한다
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-  CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+  CMD curl -fs http://127.0.0.1/ > /dev/null || exit 1
 
-# 실행 명령은 베이스 이미지의 것을 그대로 쓴다 (ENTRYPOINT /docker-entrypoint.sh, CMD nginx -g "daemon off;")
+# 실행 명령은 바탕 이미지의 것을 그대로 쓴다 (/docker-entrypoint.sh → nginx -g "daemon off;")
