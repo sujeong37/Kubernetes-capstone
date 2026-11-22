@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # step2: 네트워크 → DB → APP → Web 순서로 컨테이너 3개를 띄운다.
-#   bash docker/up.sh                                  → 내 컴퓨터의 bus-app:step2.1 · bus-web:step2.1 (현재 단계)
+#   bash docker/up.sh                                  → 내 컴퓨터의 bus-app:step2.2 · bus-web:step2.2 (현재 단계)
 #   IMAGE_TAG=step2 bash docker/up.sh                  → 이전 단계 이미지 (step2.0 의 web 은 컨테이너 포트 80)
 #   IMAGE_PREFIX=<Docker Hub 계정>/ bash docker/up.sh  → 레지스트리의 이미지 (없으면 받아 온다)
 #
@@ -9,7 +9,7 @@
 # 공공 API 인증키(TAGO_SERVICE_KEY)가 환경 변수에 있으면 APP에 전달하고, 없으면 가짜 데이터로 동작한다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TAG="${IMAGE_TAG:-step2.1}"
+TAG="${IMAGE_TAG:-step2.2}"
 # web 컨테이너가 듣는 포트: step2.0 은 80(root), step2.1 부터 8080(비root)
 WEB_PORT="${WEB_PORT:-$([ "$TAG" = step2 ] && echo 80 || echo 8080)}"
 PREFIX="${IMAGE_PREFIX:-}"
