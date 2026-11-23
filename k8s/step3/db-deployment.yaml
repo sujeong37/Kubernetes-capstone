@@ -1,0 +1,83 @@
+# step3.4 — MySQL 8.4 (compose 의 db 서비스를 Kubernetes 로)
+#   Recreate : 옛 Pod를 끝낸 뒤 새 Pod를 만든다 → 두 MySQL 이 같은 데이터 디렉터리를 동시에 열지 않는다
+#   비밀번호  : Secret bus-db 에서만 읽는다 (Secret 은 Git 에 없다 → create-secrets.sh)
+#   데이터    : PVC db-data → /var/lib/mysql  (Pod 를 교체해도 유지)
+#   초기 SQL  : ConfigMap db-init → /docker-entrypoint-initdb.d (빈 디렉터리일 때 한 번만)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: bus
+  labels:
+    app: db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.4
+        ports:
+        - name: mysql
+          containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bus-db
+              key: root-password
+        - name: MYSQL_DATABASE
+          value: busdb
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: bus-db
+              key: username
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bus-db
+              key: password
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+        - name: init
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 384Mi
+          limits:
+            memory: 768Mi
+        # compose 의 healthcheck 와 같은 검사. 준비되기 전에는 Service 로 요청을 보내지 않는다
+        readinessProbe:
+          exec:
+            command: ["mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # 첫 시작(초기화)은 시간이 걸리므로 넉넉히. 그 뒤에는 멈춘 프로세스를 재시작
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: db-data
+      - name: init
+        configMap:
+          name: db-init

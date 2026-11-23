@@ -1,0 +1,5 @@
+# step3.4 — Bus 앱 오브젝트를 한곳에 (compose 프로젝트 이름 bus 와 같은 역할)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bus

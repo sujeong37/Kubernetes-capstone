@@ -1,0 +1,14 @@
+# step3.4 — 이름 db 로 MySQL 에 접속 (compose 서비스 이름 db 와 같다 → 앱 설정 DB_HOST=db 그대로)
+#   type 을 생략 = ClusterIP: 클러스터 안에서만 닿는 주소. NodePort · LoadBalancer 를 만들지 않는다
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: bus
+spec:
+  selector:
+    app: db
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: mysql

@@ -1,0 +1,14 @@
+# step3.4 — MySQL 데이터 디렉터리용 저장 공간 신청서 (compose 볼륨 bus-db-data 와 같은 역할)
+#   storageClassName 을 생략 → 기본 StorageClass local-path (노드 디스크, WaitForFirstConsumer)
+#   ReadWriteOnce: 노드 하나에서 읽기 · 쓰기. DB Pod는 1개이므로 충분하다
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-data
+  namespace: bus
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
