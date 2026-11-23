@@ -7,9 +7,9 @@
 #
 #   bash infra/step3/ec2/create-cluster.sh
 #
-# 수업 스크립트(01-04 부록)에서 바꾼 것
+# 수업 스크립트(Kubernetes Core 01-04 부록 create-cluster.sh)에서 바꾼 것
 #   - IMDSv2 만 · 홉 제한 1, IAM 역할 없음  → Pod 가 노드의 메타데이터(자격 증명)를 못 가져가게
-#   - 디스크 DeleteOnTermination=true       → 삭제 후 EBS 요금이 남지 않게
+#   - 디스크 DeleteOnTermination=true 명시   → 삭제 후 EBS 요금이 남지 않게
 #   - ~/.bus-step3/ssh_config 생성           → ssh cp 로 접속 (공인 IP 가 바뀌어도)
 #   - 이름 · 태그 bus-step3, 키는 레포 밖 ~/.bus-step3/
 # ============================================================================
@@ -21,6 +21,10 @@ check_aws
 [[ -z "$(vpc_id)" ]] || die "이미 ${PREFIX} VPC 가 있습니다. 다시 만들려면 delete-cluster.sh 먼저"
 
 install -d -m 700 "$STATE_DIR"
+# AWS 에 키 페어만 남고 개인 키 파일이 없으면 접속할 수 없다 → 아무것도 만들기 전에 멈춘다
+if aws ec2 describe-key-pairs --key-names "$KEY_NAME" >/dev/null 2>&1 && [[ ! -f $KEY_FILE ]]; then
+  die "AWS 에 $KEY_NAME 은 있는데 $KEY_FILE 이 없습니다. delete-cluster.sh 로 정리 후 다시"
+fi
 MY_IP="${MY_IP:-$(my_ip)}"
 
 # 1) AMI — Rocky Linux 공식 계정(792107900819)의 Rocky 9 x86_64 최신
@@ -69,12 +73,17 @@ aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 
 aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 30000-32767 --cidr "${MY_IP}/32" >/dev/null
 log "Security group: $SG (노드끼리 전체 · SSH · NodePort 허용: ${MY_IP}/32)"
 
-# 7) 키 페어 — 개인 키는 이 컴퓨터 ~/.bus-step3/ 에만 (권한 600)
-umask 077
-aws ec2 create-key-pair --key-name "$KEY_NAME" --key-type ed25519 \
-  --tag-specifications "$(tags key-pair "$KEY_NAME")" --query KeyMaterial --output text > "$KEY_FILE"
-chmod 600 "$KEY_FILE"
-log "Key pair: $KEY_NAME → $KEY_FILE"
+# 7) 키 페어 — 없을 때만 만든다 (수업 스크립트와 같음). 개인 키는 이 컴퓨터 ~/.bus-step3/ 에만 (권한 600)
+if ! aws ec2 describe-key-pairs --key-names "$KEY_NAME" >/dev/null 2>&1; then
+  rm -f "$KEY_FILE"                      # AWS 에 없는 키의 남은 로컬 파일
+  umask 077
+  aws ec2 create-key-pair --key-name "$KEY_NAME" --key-type ed25519 \
+    --tag-specifications "$(tags key-pair "$KEY_NAME")" --query KeyMaterial --output text > "$KEY_FILE"
+  chmod 600 "$KEY_FILE"
+  log "Key pair: $KEY_NAME → $KEY_FILE"
+else
+  log "Key pair: $KEY_NAME (이미 있음) → $KEY_FILE"
+fi
 
 # 8) 인스턴스 3대 — 사설 IP 고정, 호스트 이름 = 노드 이름
 for n in "${NODES[@]}"; do

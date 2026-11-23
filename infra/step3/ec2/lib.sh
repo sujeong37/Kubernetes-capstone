@@ -107,15 +107,16 @@ EOF
   rm -f "$tmp"
 }
 
-# 보안 그룹의 "내 IP" 규칙(22 · NodePort)을 지금 IP 로 바꾼다 (집 · 학원 등 IP 가 바뀔 때)
+# 보안 그룹의 "내 IP" 규칙(22 · NodePort)을 지금 IP 로 바꾼다 (수업 start-cluster.sh 와 같은 방식)
+#   접속 장소(집 · 학원)가 바뀌면 공인 IP 도 바뀐다 → 포트 범위마다 옛 CIDR 을 지우고 지금 IP 를 넣는다
 update_my_ip_rules() {   # update_my_ip_rules <sg-id> <ip>
-  local sg=$1 ip=$2 old
-  for old in $(aws ec2 describe-security-groups --group-ids "$sg" \
-      --query 'SecurityGroups[0].IpPermissions[?FromPort==`22`].IpRanges[].CidrIp' --output text); do
-    [[ $old == "${ip}/32" ]] && continue
-    aws ec2 revoke-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "$old" >/dev/null
-    aws ec2 revoke-security-group-ingress --group-id "$sg" --protocol tcp --port 30000-32767 --cidr "$old" >/dev/null 2>&1 || true
+  local sg=$1 ip=$2 range from cidr
+  for range in 22-22 30000-32767; do
+    from=${range%-*}
+    for cidr in $(aws ec2 describe-security-groups --group-ids "$sg" \
+        --query "SecurityGroups[0].IpPermissions[?FromPort==\`$from\`].IpRanges[].CidrIp" --output text); do
+      aws ec2 revoke-security-group-ingress --group-id "$sg" --protocol tcp --port "$range" --cidr "$cidr" >/dev/null
+    done
+    aws ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port "$range" --cidr "${ip}/32" >/dev/null
   done
-  aws ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "${ip}/32" >/dev/null 2>&1 || true
-  aws ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 30000-32767 --cidr "${ip}/32" >/dev/null 2>&1 || true
 }
