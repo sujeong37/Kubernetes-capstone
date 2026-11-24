@@ -5,6 +5,8 @@
 #   RollingUpdate   : maxUnavailable 0 · maxSurge 1 → 업데이트 중에도 준비된 Pod 2개 유지 (3.7)
 #   enableServiceLinks: false (step3.7) — kubelet 이 Service 마다 넣던 DB_PORT=tcp://… 같은 변수를 끈다
 #                    (3.5 에서 발견: ConfigMap 의 DB_PORT 가 없으면 앱이 int("tcp://…") 로 시작 실패)
+#   preStop sleep 5 (step3.9) — 종료 신호 전에 5초 기다린다: 그동안 kube-proxy · Envoy 가 이 Pod 를 목록에서 빼고
+#                    새 요청이 더 오지 않은 뒤에 프로세스가 멈춘다 (3.7 에서 본 롤링 중 502 의 해결)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,10 +58,15 @@ spec:
             memory: 16Mi
           limits:
             memory: 32Mi
+      terminationGracePeriodSeconds: 30   # preStop 5초 + 앱 정리 시간 (기본값과 같지만 드러낸다)
       containers:
       - name: app
         image: sujeong79/bus-app:step2.3
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            sleep:
+              seconds: 5
         ports:
         - name: http
           containerPort: 8000
