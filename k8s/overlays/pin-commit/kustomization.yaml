@@ -1,0 +1,13 @@
+# step3.12 — overlay: 기본(base)은 그대로 두고 「바꿀 것만」 적는다
+#   움직이는 태그 step2.3 대신 커밋 태그 step2.3-aaa4404 로 고정 (같은 빌드, 2.3 에서 push 한 두 태그)
+#   → 언제 배포해도 같은 이미지. 4단계에서 ECR 로 옮길 때도 newName 한 줄이면 된다
+#   kubectl diff -k k8s/overlays/pin-commit   → image 두 줄만 바뀐다
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../step3
+images:
+- name: sujeong79/bus-app
+  newTag: step2.3-aaa4404
+- name: sujeong79/bus-web
+  newTag: step2.3-aaa4404

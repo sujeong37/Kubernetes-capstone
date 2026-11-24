@@ -1,0 +1,20 @@
+# step3.12 — 템플릿: 중괄호 두 겹 자리만 values.yaml 값으로 채운다 (나머지는 k8s/step3 원본 그대로)
+# step3.6 — web 을 클러스터 밖(내 PC)에 연다: ClusterIP(3.5) → NodePort
+#   NodePort : 모든 노드의 같은 포트(30080)로 들어온 요청을 kube-proxy 가 web Pod 로 보낸다
+#              (web Pod 가 없는 cp 로 들어와도 된다 — externalTrafficPolicy: Cluster, 기본값)
+#   30080 고정 : 보안 그룹이 내 공인 IP 에만 30000-32767 을 열어 두었다. 번호를 고정해 주소가 바뀌지 않게
+#   app · db 는 ClusterIP 그대로 → 밖에서는 web(Nginx)을 거쳐서만 /api 에 닿는다
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: web
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    nodePort: {{ .Values.web.nodePort }}

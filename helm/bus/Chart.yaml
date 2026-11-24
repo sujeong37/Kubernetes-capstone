@@ -1,0 +1,7 @@
+# step3.12 — 같은 app · web 을 Helm 차트로 만들면 (비교용 · 설치하지 않음)
+apiVersion: v2
+name: bus
+description: Bus 도착 정보 app · web (step3 매니페스트를 템플릿으로 바꾼 비교용 차트)
+type: application
+version: 0.1.0
+appVersion: "step2.3"

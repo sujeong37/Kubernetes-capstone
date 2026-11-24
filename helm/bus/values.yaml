@@ -1,0 +1,11 @@
+# step3.12 — 바꿀 수 있는 값을 한곳에 모은다. 템플릿은 {{ .Values.… }} 로 읽는다
+#   helm template bus helm/bus -n bus --set app.replicas=3   처럼 설치 때 값만 바꿀 수 있다
+image:
+  repository: sujeong79      # 4단계: <계정>.dkr.ecr.ap-northeast-2.amazonaws.com
+  tag: step2.3
+cityCode: "25"               # 대전 (발표 Q&A: 다른 도시는 이 값만 바꿔 다시 배포)
+app:
+  replicas: 2
+web:
+  replicas: 2
+  nodePort: 30080

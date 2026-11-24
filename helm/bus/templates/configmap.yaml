@@ -1,0 +1,14 @@
+# step3.12 — 템플릿: 중괄호 두 겹 자리만 values.yaml 값으로 채운다 (나머지는 k8s/step3 원본 그대로)
+# step3.5 — 앱 공통 설정 (비밀이 아닌 값만). 2단계 docker/env.docker 와 같은 내용
+#   DB_HOST=db : 3.4 의 Service 이름. 같은 namespace 라 CoreDNS 가 db → db.bus.svc.cluster.local 로 찾아 준다
+#   DB_USER · DB_PASSWORD · TAGO_SERVICE_KEY 는 여기 없다 → Secret bus-db · bus-tago (Git 밖)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bus-app-config
+  namespace: {{ .Release.Namespace }}
+data:
+  DB_HOST: db
+  DB_PORT: "3306"
+  DB_NAME: busdb
+  CITY_CODE: "{{ .Values.cityCode }}"

@@ -1,0 +1,124 @@
+# step3.12 — 템플릿: 중괄호 두 겹 자리만 values.yaml 값으로 채운다 (나머지는 k8s/step3 원본 그대로)
+# step3.5 — APP (FastAPI). compose 의 app 서비스를 Kubernetes 로
+#   replicas 2 + topologySpreadConstraints : worker1 · worker2 에 하나씩 → 노드 하나가 죽어도 서비스 유지
+#   init container  : db:3306 이 열릴 때까지 기다린다 (compose 의 depends_on: service_healthy)
+#   readinessProbe  : 준비된 Pod 만 Service(app) 로 요청을 받는다 (compose 의 healthcheck)
+#   RollingUpdate   : maxUnavailable 0 · maxSurge 1 → 업데이트 중에도 준비된 Pod 2개 유지 (3.7)
+#   enableServiceLinks: false (step3.7) — kubelet 이 Service 마다 넣던 DB_PORT=tcp://… 같은 변수를 끈다
+#                    (3.5 에서 발견: ConfigMap 의 DB_PORT 가 없으면 앱이 int("tcp://…") 로 시작 실패)
+#   preStop sleep 5 (step3.9) — 종료 신호 전에 5초 기다린다: 그동안 kube-proxy · Envoy 가 이 Pod 를 목록에서 빼고
+#                    새 요청이 더 오지 않은 뒤에 프로세스가 멈춘다 (3.7 에서 본 롤링 중 502 의 해결)
+#   serviceAccountName (step3.11) — 전용 SA, API 토큰 넣지 않음 (security/serviceaccounts.yaml)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: app
+spec:
+  replicas: {{ .Values.app.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      serviceAccountName: app
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: app
+        matchLabelKeys:             # step3.10 — 같은 revision(pod-template-hash) 의 Pod 끼리만 센다
+        - pod-template-hash         #   (3.7: 롤링 중 옛 Pod 까지 세어 새 Pod 2개가 한 노드에 몰림)
+      securityContext:
+        runAsNonRoot: true            # 이미지의 USER 10001 (2.1) — root 로 뜨려 하면 kubelet 이 거부
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: wait-db
+        image: busybox:1.37
+        command: ["sh", "-c"]
+        args:
+        - until nc -z -w 2 db 3306; do echo "$(date +%T) waiting for db:3306"; sleep 3; done; echo "$(date +%T) db:3306 is ready"
+        securityContext:
+          runAsUser: 65534            # nobody
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            memory: 32Mi
+      terminationGracePeriodSeconds: 30   # preStop 5초 + 앱 정리 시간 (기본값과 같지만 드러낸다)
+      containers:
+      - name: app
+        image: {{ .Values.image.repository }}/bus-app:{{ .Values.image.tag }}
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            sleep:
+              seconds: 5
+        ports:
+        - name: http
+          containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: bus-app-config
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: bus-db
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bus-db
+              key: password
+        - name: TAGO_SERVICE_KEY        # 비어 있으면 앱이 가짜 데이터로 동작
+          valueFrom:
+            secretKeyRef:
+              name: bus-tago
+              key: service-key
+              optional: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /api/healthz
+            port: http
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
