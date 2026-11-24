@@ -1,0 +1,17 @@
+# step4.1 — EKS Auto Mode 클러스터 bus-eks (eksctl 설정 파일)
+#   eksctl 하나로 VPC · IAM 역할 · 클러스터를 CloudFormation 스택으로 만들고, 지울 때도 같은 순서를 거꾸로 지운다 (4.9)
+#   Auto Mode : 노드 · VPC CNI · CoreDNS · kube-proxy · EBS CSI · 로드밸런서 컨트롤러 · Pod Identity 에이전트를 AWS 가 운영
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: bus-eks
+  region: ap-northeast-2
+  tags:
+    Project: bus-capstone
+availabilityZones: [ap-northeast-2a, ap-northeast-2b]   # 4.7(선택) 가용 영역 분산을 위해 처음부터 두 영역
+vpc:
+  cidr: 10.20.0.0/16          # 3단계 VPC(192.168.0.0/16)와 겹치지 않게 — 4.5 RDS 등에서 헷갈리지 않는다
+  nat:
+    gateway: Single           # NAT 1개 (영역마다 하나씩 두는 HighlyAvailable 보다 시간당 요금 절반). 캡스톤 규모의 선택
+autoModeConfig:
+  enabled: true               # nodePools 기본값: general-purpose · system
