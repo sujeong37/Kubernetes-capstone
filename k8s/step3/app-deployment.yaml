@@ -37,6 +37,8 @@ spec:
         labelSelector:
           matchLabels:
             app: app
+        matchLabelKeys:             # step3.10 — 같은 revision(pod-template-hash) 의 Pod 끼리만 센다
+        - pod-template-hash         #   (3.7: 롤링 중 옛 Pod 까지 세어 새 Pod 2개가 한 노드에 몰림)
       securityContext:
         runAsNonRoot: true            # 이미지의 USER 10001 (2.1) — root 로 뜨려 하면 kubelet 이 거부
         seccompProfile:

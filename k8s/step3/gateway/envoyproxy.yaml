@@ -13,5 +13,12 @@ spec:
     kubernetes:
       envoyDeployment:
         replicas: 2
+        container:
+          resources:              # step3.10 — 기본 요청 cpu 100m · mem 512Mi 는 실제 사용량(kubectl top)보다 훨씬 크다
+            requests:             #   t3.medium(4GB) 에서 자리를 낭비하지 않게 실측 기준으로 줄인다
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
       envoyService:
         type: NodePort

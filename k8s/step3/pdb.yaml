@@ -1,0 +1,25 @@
+# step3.10 — PodDisruptionBudget: 계획된 중단(drain · 노드 점검)에서도 최소 1개는 남긴다
+#   minAvailable 1 + replicas 2 → 한 번에 1개까지만 내보낼 수 있다 (ALLOWED DISRUPTIONS 1)
+#   막는 것은 eviction(drain) 뿐 — 노드 장애 · kubectl delete pod 는 막지 못한다
+#   db 는 replicas 1 이라 PDB 를 두면 drain 이 영원히 막힌다 → 두지 않는다 (DB 이전은 운영자가 직접)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: app
+  namespace: bus
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: app
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web
+  namespace: bus
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: web
