@@ -1,0 +1,17 @@
+# step3.8 — 클러스터의 입구 하나 (HTTP 80). 실제로 받는 것은 envoy-gateway-system 의 Envoy Pod
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: bus
+  namespace: bus
+spec:
+  gatewayClassName: envoy
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: proxy
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80

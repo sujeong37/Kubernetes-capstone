@@ -1,0 +1,27 @@
+# step3.8 — 경로로 나눠 보내기 (L7)
+#   /api/... → app:8000  (Nginx 를 거치지 않는다 — 한 단계 줄어듦)
+#   /        → web:8080  (화면 파일)
+#   더 긴 경로(/api)가 먼저 맞는다 (Gateway API 는 가장 구체적인 매치를 우선)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: bus
+  namespace: bus
+spec:
+  parentRefs:
+  - name: bus
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: app
+      port: 8000
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: web
+      port: 8080

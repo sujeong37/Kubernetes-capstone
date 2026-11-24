@@ -1,0 +1,17 @@
+# step3.8 — Envoy 프록시 Pod · Service 모양 (수업은 MetalLB 로 LoadBalancer, 우리는 EC2 라 NodePort)
+#   AWS VPC 는 MetalLB L2(ARP) 광고를 전달하지 않고, kubeadm 에는 클라우드 LB 컨트롤러가 없다
+#   → Envoy 앞 Service 를 NodePort 로. 보안 그룹은 3.0 부터 내 IP 에만 30000-32767 이 열려 있다
+#   replicas 2 : 프록시가 하나면 그 Pod 가 곧 단일 장애점
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: proxy
+  namespace: bus
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        replicas: 2
+      envoyService:
+        type: NodePort
