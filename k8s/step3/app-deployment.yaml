@@ -3,6 +3,8 @@
 #   init container  : db:3306 이 열릴 때까지 기다린다 (compose 의 depends_on: service_healthy)
 #   readinessProbe  : 준비된 Pod 만 Service(app) 로 요청을 받는다 (compose 의 healthcheck)
 #   RollingUpdate   : maxUnavailable 0 · maxSurge 1 → 업데이트 중에도 준비된 Pod 2개 유지 (3.7)
+#   enableServiceLinks: false (step3.7) — kubelet 이 Service 마다 넣던 DB_PORT=tcp://… 같은 변수를 끈다
+#                    (3.5 에서 발견: ConfigMap 의 DB_PORT 가 없으면 앱이 int("tcp://…") 로 시작 실패)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,6 +27,7 @@ spec:
       labels:
         app: app
     spec:
+      enableServiceLinks: false
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
