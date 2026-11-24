@@ -1,0 +1,65 @@
+# step3.11 — NetworkPolicy (Calico 가 구현). bus namespace 의 들어오는 트래픽을 「필요한 길만」 연다
+#   기본 거부 → db 는 app 에서만 3306, app 은 web · Envoy 프록시에서만 8000, web 은 누구나 8080(NodePort · Gateway 입구)
+#   노드(kubelet)에서 오는 Probe 는 NetworkPolicy 와 관계없이 항상 허용된다 (Kubernetes 규칙)
+#   나가는 트래픽(egress)은 막지 않는다 — app 이 TAGO(인터넷) · DNS 를 써야 한다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: bus
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-from-app
+  namespace: bus
+spec:
+  podSelector:
+    matchLabels:
+      app: db
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: app
+    ports:
+    - port: 3306
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-from-web-and-gateway
+  namespace: bus
+spec:
+  podSelector:
+    matchLabels:
+      app: app
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: web
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: envoy-gateway-system
+    ports:
+    - port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-from-anywhere
+  namespace: bus
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes: [Ingress]
+  ingress:
+  - ports:
+    - port: 8080

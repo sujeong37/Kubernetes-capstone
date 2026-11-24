@@ -3,6 +3,7 @@
 #   Kubernetes 에서는 app 이 Service(고정 ClusterIP) 라서 Pod 가 바뀌어도 IP 가 같다 → 기다리지 않아도 된다
 #   preStop sleep 5 (step3.9) — 종료 신호 전에 5초 기다린다: 그동안 kube-proxy · Envoy 가 이 Pod 를 목록에서 빼고
 #                    새 요청이 더 오지 않은 뒤에 프로세스가 멈춘다 (3.7 에서 본 롤링 중 502 의 해결)
+#   serviceAccountName (step3.11) — 전용 SA, API 토큰 넣지 않음 (security/serviceaccounts.yaml)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,6 +26,8 @@ spec:
       labels:
         app: web
     spec:
+      serviceAccountName: web
+      automountServiceAccountToken: false
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
