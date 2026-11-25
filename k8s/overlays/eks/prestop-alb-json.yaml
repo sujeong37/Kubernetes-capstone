@@ -1,0 +1,4 @@
+# ⑧ 첫 번째 컨테이너(app · web)의 preStop sleep 을 15초로
+- op: replace
+  path: /spec/template/spec/containers/0/lifecycle/preStop/sleep/seconds
+  value: 15

@@ -13,7 +13,7 @@ spec:
 ---
 # targetType ip : ALB 가 Pod IP 로 바로 보낸다 (기본 instance 는 NodePort 를 거친다 — 한 단계 더, Service 도 NodePort 여야 함)
 # 상태 확인 : ALB 기본은 「/ → 200」. app 은 / 가 없으므로 readinessProbe 와 같은 /api/healthz
-# deregistration_delay 30초 : 빠지는 Pod 로 새 요청을 보내지 않는 시간 (기본 300초 — 롤링이 느려진다). preStop 5초와 함께 무중단
+# deregistration_delay 30초 : 빠지는 Pod 로 새 요청을 보내지 않는 시간 (기본 300초 — 롤링이 느려진다). preStop 15초(⑧)와 함께 무중단
 apiVersion: gateway.k8s.aws/v1beta1
 kind: TargetGroupConfiguration
 metadata:

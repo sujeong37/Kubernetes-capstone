@@ -1,0 +1,12 @@
+# ⑧ (4.4 에서 추가) preStop 5초 → 15초 · 종료 유예 30 → 45초 (app · web)
+#   4.4 ① app 롤링에서 ALB 실패 1번(502). 3단계(kube-proxy · Envoy)는 Pod 가 빠지면 1초 안에 목록이 바뀌었지만,
+#   ALB 는 컨트롤러가 대상 해제를 AWS API 로 요청하고 ALB 가 반영할 때까지 몇 초가 더 걸린다.
+#   그 사이 preStop 5초가 끝나 프로세스가 멈추면, 아직 대상인 Pod 로 간 요청이 502 가 된다 → 반영 시간보다 길게 기다린다
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: any
+spec:
+  template:
+    spec:
+      terminationGracePeriodSeconds: 45

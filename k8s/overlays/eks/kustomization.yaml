@@ -23,3 +23,7 @@ patches:
 - path: networkpolicy-app.yaml # ⑥ app 들어오는 길: Envoy namespace → ALB 가 있는 공용 서브넷
 - path: amd64.yaml             # ⑦ 이미지가 linux/amd64 만 → amd64 노드에만 (system 풀은 arm64 c6g)
   target: {kind: Deployment, name: "app|web"}
+- path: prestop-alb.yaml       # ⑧ (4.4) ALB 대상 해제 반영 시간 → preStop 15초 · 종료 유예 45초 (app · web)
+  target: {kind: Deployment, name: "app|web"}
+- path: prestop-alb-json.yaml
+  target: {kind: Deployment, name: "app|web"}
