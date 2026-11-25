@@ -1,0 +1,10 @@
+# ③ 클러스터 안 MySQL 은 더 쓰지 않는다. Deployment 를 지우지 않고 0 으로 두는 이유:
+#   - kubectl apply 는 목록에서 빠진 객체를 지우지 않는다 → 0 으로 「적어 두는」 것이 Git 과 클러스터를 같게 둔다
+#   - PVC db-data(EBS)가 남아 있어 OVERLAY=eks 로 되돌리면 옮기기 전 데이터로 다시 뜬다
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: bus
+spec:
+  replicas: 0

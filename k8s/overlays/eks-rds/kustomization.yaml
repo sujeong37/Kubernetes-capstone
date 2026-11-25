@@ -1,0 +1,12 @@
+# step4.5 — DB 를 클러스터 안 MySQL(EBS) → Amazon RDS for MySQL 로. base = 4.3 의 EKS overlay 그대로
+#   적용: OVERLAY=eks-rds bash infra/step4/eks/apply-eks.sh  (RDS_HOST 자리를 ~/.bus-step4/rds 값으로 채운다)
+#   되돌리기: bash infra/step4/eks/apply-eks.sh (OVERLAY 기본 eks → db Deployment 가 다시 1 · DB_HOST=db)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../eks
+patches:
+- path: app-config.yaml        # ① DB_HOST: db(클러스터 Service) → RDS 주소
+- path: app-wait-db.yaml       # ② app 의 init container 가 기다리는 곳도 RDS 로 (db:3306 이 하드코딩돼 있었다)
+  target: {kind: Deployment, name: app}
+- path: db-off.yaml            # ③ 클러스터 안 MySQL 은 0개로 — PVC(EBS)는 남겨 두어 되돌릴 수 있게 (4.9 에서 삭제)

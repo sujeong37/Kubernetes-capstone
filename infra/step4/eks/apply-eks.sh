@@ -5,19 +5,27 @@
 #   bash apply-eks.sh           : 적용 → rollout → ALB 준비 → /api/healthz 200 까지 → 배치 · EBS · ALB 요약
 #   Git 의 overlay 에는 ACCOUNT_ID · MY_IP 자리 표시만 있다. 실행 때 채우고 화면에서는 둘 다 가린다.
 #   발표 장소에서 인터넷(공인 IP)이 바뀌면 다시 실행 → ALB 허용 IP 만 바뀐다
+#   step4.5: OVERLAY=eks-rds → DB 를 RDS 로 (RDS_HOST 자리를 ~/.bus-step4/rds 로 채운다. --compare 는 eks 와 비교)
 set -euo pipefail
 cd "$(dirname "$0")"; source ../lib.sh; need_aws
 ROOT=$(cd ../../.. && pwd); CLUSTER=bus-eks; NS=bus
+OVERLAY=${OVERLAY:-eks}; [ -d "$ROOT/k8s/overlays/$OVERLAY" ] || die "k8s/overlays/$OVERLAY 가 없다"
+RDS_HOST=x
+if [ "$OVERLAY" = eks-rds ]; then
+  RDS_HOST=$(cat ~/.bus-step4/rds 2>/dev/null || true)
+  [ -n "$RDS_HOST" ] || die "~/.bus-step4/rds 가 없다 → bash infra/step4/rds/create-rds.sh 먼저 (4.5)"
+fi
 MYIP=$(curl -s -m 5 https://checkip.amazonaws.com | tr -d '[:space:]')
 [[ "$MYIP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "내 공인 IP 를 못 얻음 (checkip.amazonaws.com)"
 IPRE=${MYIP//./\\.}
 exec > >(sed -u "s/$IPRE/<내 IP>/g") 2>&1     # 공인 IP 도 화면 · 스크린샷에 남기지 않는다
-render_eks() { kubectl kustomize "$ROOT/k8s/overlays/eks" | sed -e "s/ACCOUNT_ID/$ACCOUNT/g" -e "s#MY_IP/32#$MYIP/32#" -e "s#gateway.k8s.aws/v1beta1#$GWV#"; }
+render_eks() { kubectl kustomize "$ROOT/k8s/overlays/$OVERLAY" | sed -e "s/ACCOUNT_ID/$ACCOUNT/g" -e "s#MY_IP/32#$MYIP/32#" -e "s#gateway.k8s.aws/v1beta1#$GWV#" -e "s/RDS_HOST/$RDS_HOST/g"; }
 
 if [ "${1:-}" = --compare ]; then
-  say "== ③(k8s/step3) → ④(k8s/overlays/eks) 에서 바뀐 줄 (- 3단계, + EKS)"
+  FROM=step3; [ "$OVERLAY" = eks ] || FROM=overlays/eks
+  say "== k8s/$FROM → k8s/overlays/$OVERLAY 에서 바뀐 줄 (- 전, + 후)"
   GWV=gateway.k8s.aws/v1beta1
-  diff -u <(kubectl kustomize "$ROOT/k8s/step3") <(kubectl kustomize "$ROOT/k8s/overlays/eks") \
+  diff -u <(kubectl kustomize "$ROOT/k8s/$FROM") <(kubectl kustomize "$ROOT/k8s/overlays/$OVERLAY") \
    | grep -E '^[-+]' | grep -vE '^(\+\+\+|---)' | grep -vE '^[-+]\s*$' || true
   exit 0
 fi
@@ -30,10 +38,11 @@ kubectl get storageclass ebs >/dev/null 2>&1 && kubectl get gatewayclass eks-alb
 
 if [ "${1:-}" = --diff ]; then render_eks | kubectl diff -f - | grep -E '^[-+] ' || true; exit 0; fi
 
-say "== 적용 ($(date +%T)) · ALB 확장 API $GWV · 이미지 $(mask "$ACCOUNT").dkr.ecr…:$(awk '/newTag:/{print $2; exit}' "$ROOT/k8s/overlays/eks/kustomization.yaml")"
+say "== 적용 ($(date +%T)) · overlay $OVERLAY · ALB 확장 API $GWV · 이미지 $(mask "$ACCOUNT").dkr.ecr…:$(awk '/newTag:/{print $2; exit}' "$ROOT/k8s/overlays/eks/kustomization.yaml")"
 t0=$SECONDS
 render_eks | kubectl apply -f - | sed 's/^/  /'
 say "== rollout (노드가 없으면 Auto Mode 가 만든다 · db 는 EBS 를 만들어 붙인다)"
+[ "$OVERLAY" = eks-rds ] && say "  DB_HOST → $RDS_HOST (클러스터 안 db 는 0개)"
 for d in db app web; do kubectl rollout status deploy/$d -n $NS --timeout=10m | tail -1 | sed "s/^/  /"; done
 say "  Pod 준비 $((SECONDS-t0))초"
 say "== ALB (Gateway → Programmed)"
