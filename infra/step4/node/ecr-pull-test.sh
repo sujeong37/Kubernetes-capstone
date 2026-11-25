@@ -7,7 +7,9 @@ T=$(curl -s -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.
 ACC=$(curl -s -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/dynamic/instance-identity/document | python3 -c 'import json,sys;print(json.load(sys.stdin)["accountId"])')
 M="****${ACC: -4}"; hide() { sed -u "s/$ACC/$M/g"; }
 exec > >(hide) 2>&1   # 오류 메시지까지 모든 출력에서 계정 ID 를 가린다
-TAG=$(git log -1 --format=%h --abbrev=7 -- app/was app/web)
+# 태그는 overlay(ec2-ecr)에 적힌 값을 쓴다 — cp 의 저장소는 얕은 clone 이라 git 기록으로는 못 구할 수 있다
+TAG=$(awk '/newTag:/{print $2; exit}' k8s/overlays/ec2-ecr/kustomization.yaml)
+[ -n "$TAG" ] || { echo "ERROR: k8s/overlays/ec2-ecr 에서 태그를 못 읽음 (git pull 했는지)"; exit 1; }
 IMG="$ACC.dkr.ecr.ap-northeast-2.amazonaws.com/bus-web:$TAG"
 echo "== 이미지 $M.dkr.ecr.ap-northeast-2.amazonaws.com/bus-web:$TAG"
 for n in ${NODES:-worker1 worker2 cp}; do
