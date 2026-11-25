@@ -2,7 +2,7 @@
 # step4.0.3 — (cp 창) overlay ec2-ecr 적용: ACCOUNT_ID 자리를 IMDS 의 계정 ID 로 바꿔 apply (화면에는 가림)
 #   --diff 만 주면 바뀔 줄만 보여 주고 적용하지 않는다
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/../../.."   # 저장소 맨 위 (infra/step4/node → ../../..)
 T=$(curl -s -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
 ACC=$(curl -s -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/dynamic/instance-identity/document | python3 -c 'import json,sys;print(json.load(sys.stdin)["accountId"])')
 M="****${ACC: -4}"; hide() { sed -u "s/$ACC/$M/g"; }

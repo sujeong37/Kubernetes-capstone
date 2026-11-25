@@ -2,7 +2,7 @@
 # step4.0.3 — (cp 창) worker 마다 ECR 이미지로 시험 Pod 를 띄워 pull 되는지 + Pod 가 노드 역할에 닿지 못하는지
 #   계정 ID 는 cp 의 IMDS(인스턴스 신원 문서)에서 읽고 화면에는 뒤 4자리만 → Git 에 계정 ID 를 넣지 않는다
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/../../.."   # 저장소 맨 위 (infra/step4/node → ../../..)
 T=$(curl -s -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
 ACC=$(curl -s -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/dynamic/instance-identity/document | python3 -c 'import json,sys;print(json.load(sys.stdin)["accountId"])')
 M="****${ACC: -4}"; hide() { sed -u "s/$ACC/$M/g"; }
