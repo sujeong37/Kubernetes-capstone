@@ -6,16 +6,16 @@
 set -euo pipefail
 BIN_DIR=/usr/local/libexec/kubelet-credential-providers
 CONF=/etc/kubernetes/credential-provider.yaml
-VERSIONS="v1.34.0 v1.33.0 v1.32.0 v1.31.0 v1.30.2"
+VERSIONS="v1.36.2 v1.35.3 v1.34.4 v1.31.7"   # 클러스터 v1.36.5 에 맞춘 순서. 공식 바이너리는 k8s-artifacts-prod 에만 있다 (staging 경로는 404)
 echo "== $(hostname)"
 sudo mkdir -p $BIN_DIR
 if [ ! -x $BIN_DIR/ecr-credential-provider ]; then
   for v in $VERSIONS; do
-    if sudo curl -fsSL -o $BIN_DIR/ecr-credential-provider \
-       "https://storage.googleapis.com/k8s-staging-provider-aws/releases/$v/linux/amd64/ecr-credential-provider-linux-amd64"; then
+    if sudo curl -fsSL --retry 2 -o $BIN_DIR/ecr-credential-provider \
+       "https://storage.googleapis.com/k8s-artifacts-prod/binaries/cloud-provider-aws/$v/linux/amd64/ecr-credential-provider-linux-amd64"; then
       echo "  받음 ecr-credential-provider $v"; break; fi
   done
-  sudo chmod 755 $BIN_DIR/ecr-credential-provider
+  [ -s $BIN_DIR/ecr-credential-provider ] && sudo chmod 755 $BIN_DIR/ecr-credential-provider
 fi
 [ -x $BIN_DIR/ecr-credential-provider ] || { echo "ERROR: 바이너리 다운로드 실패"; exit 1; }
 echo "  sha256 $(sha256sum $BIN_DIR/ecr-credential-provider | cut -c1-16)…  (두 worker 가 같아야 한다)"
