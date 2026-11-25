@@ -15,5 +15,6 @@ say "== 요금이 붙는 자원"
 nat=$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values=$vpc Name=state,Values=available --query 'length(NatGateways)' --output text)
 lb=$(aws elbv2 describe-load-balancers --query "length(LoadBalancers[?VpcId=='$vpc'])" --output text)
 ebs=$(aws ec2 describe-volumes --filters Name=tag-key,Values=kubernetes.io/created-for/pvc/name --query 'length(Volumes)' --output text)
-inst=$(aws ec2 describe-instances --filters Name=vpc-id,Values=$vpc Name=instance-state-name,Values=running --query 'length(Reservations[].Instances[])' --output text)
+# Auto Mode 노드는 EC2 관리형 인스턴스라 describe-instances 집계가 0으로 나왔다(4.1) → 노드 수는 kubectl 로 센다
+inst=$(kubectl --context $CLUSTER get nodes --no-headers 2>/dev/null | wc -l)
 printf '  %-22s %s\n' "EKS 클러스터" "1 (시간당 약 \$0.10)" "NAT 게이트웨이" "$nat (1개 시간당 약 \$0.06 + 처리 데이터)" "노드(EC2)" "$inst" "로드밸런서" "$lb" "EBS(PVC)" "$ebs"

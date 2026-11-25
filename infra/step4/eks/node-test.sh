@@ -5,8 +5,9 @@ C=bus-eks
 k() { kubectl --context $C "$@"; }
 echo "== 전: 노드 $(k get nodes --no-headers 2>/dev/null | wc -l)대"
 start=$SECONDS
-k create deployment node-test --image=registry.k8s.io/pause:3.10 --replicas=2 >/dev/null
-k set resources deployment node-test --requests=cpu=250m,memory=64Mi >/dev/null
+# 요청(requests)을 처음부터 넣어 한 번에 만든다 — create 후 set resources 를 하면 ReplicaSet 이 두 번 생긴다(4.1 첫 실행)
+k create deployment node-test --image=registry.k8s.io/pause:3.10 --replicas=2 --dry-run=client -o yaml \
+ | k set resources --local -f - --requests=cpu=250m,memory=64Mi -o yaml | k apply -f - >/dev/null
 k rollout status deployment node-test --timeout=5m
 echo "== Pod 2개 Running 까지 $((SECONDS-start))초"
 k get pods -l app=node-test -o wide | sed 's/^/  /'
