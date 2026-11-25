@@ -58,7 +58,7 @@ kubectl expose pod web -n $NS --port=80 >/dev/null
 kubectl run client -n $NS --image=$BB --labels=app=client --command -- sleep 600 >/dev/null
 kubectl run stranger -n $NS --image=$BB --labels=app=stranger --command -- sleep 600 >/dev/null
 kubectl wait -n $NS --for=condition=Ready pod/web pod/client pod/stranger --timeout=6m >/dev/null
-try() { kubectl exec -n $NS "$1" -- wget -q -T 3 -O /dev/null http://web && echo 통과 || echo "막힘(시간 초과)"; }
+try() { kubectl exec -n $NS "$1" -- wget -q -T 3 -O /dev/null http://web 2>/dev/null && echo 통과 || echo "막힘(시간 초과)"; }   # wget 오류 줄은 숨긴다 (4.2 첫 실행)
 say "  ① 정책 없음      client → web: $(try client) · stranger → web: $(try stranger)"
 kubectl apply -n $NS -f - >/dev/null <<YAML
 apiVersion: networking.k8s.io/v1
