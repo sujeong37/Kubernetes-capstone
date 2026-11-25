@@ -1,0 +1,10 @@
+# step4.2 — NetworkPolicy 켜기. EKS Auto Mode 는 NetworkPolicy 를 「저장만 하고 지키지 않는」 상태로 시작한다
+#   3단계는 Calico 가 지켰다 (3.11). EKS 는 VPC CNI 의 네트워크 정책 컨트롤러가 지킨다 → 이 ConfigMap 으로 켠다
+#   이것 없이 3.11 의 NetworkPolicy 를 올리면 오류도 없이 모든 트래픽이 통과한다 (아무도 막지 않음)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amazon-vpc-cni
+  namespace: kube-system
+data:
+  enable-network-policy-controller: "true"

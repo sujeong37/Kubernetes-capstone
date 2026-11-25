@@ -1,0 +1,10 @@
+# step4.2 — Gateway 를 ALB 로 만드는 구현체 (3.8 의 GatewayClass envoy 자리)
+#   controllerName eks.amazonaws.com/gateway-alb : EKS Auto Mode 에 내장된 로드밸런서 컨트롤러 (설치 없음)
+#   HTTPRoute(L7) → ALB. 3.8 의 HTTPRoute(/api → app, / → web)는 그대로 쓰고 입구만 바뀐다 (4.3)
+#   GatewayClass 는 클러스터 단위라 앱 overlay 가 아니라 여기(클러스터 준비)에 둔다
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eks-alb
+spec:
+  controllerName: eks.amazonaws.com/gateway-alb

@@ -5,13 +5,14 @@
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
-if ! command -v aws >/dev/null; then
-  say "== AWS CLI v2 설치"
+# --update : 이미 있어도 최신으로 (4.2 — EKS Gateway API 설정 gatewayApi 는 2026-10 에 생긴 값이라 오래된 CLI 는 모른다)
+if ! command -v aws >/dev/null || [ "${1:-}" = --update ]; then
+  say "== AWS CLI v2 설치/업데이트 (지금: $(aws --version 2>/dev/null | cut -d' ' -f1 || echo 없음))"
   tmp=$(mktemp -d)
   curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$tmp/awscliv2.zip"
   command -v unzip >/dev/null || sudo apt-get install -y unzip >/dev/null
   unzip -q "$tmp/awscliv2.zip" -d "$tmp"
-  sudo "$tmp/aws/install" >/dev/null
+  sudo "$tmp/aws/install" --update >/dev/null
   rm -rf "$tmp"
 fi
 say "== $(aws --version)"

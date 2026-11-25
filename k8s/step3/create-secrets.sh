@@ -4,7 +4,7 @@
 #   bus-tago : service-key  ← TAGO Decoding 키를 화면에 보이지 않게 입력 (비우면 가짜 데이터)
 #   --server-side : 보통 apply 가 남기는 last-applied 주석에 비밀값이 한 번 더 저장되는 것을 막는다
 set -euo pipefail
-ENV_FILE="$HOME/.bus-step3/bus.env"
+ENV_FILE="${ENV_FILE:-$HOME/.bus-step3/bus.env}"   # step4.2: EKS 는 ENV_FILE=~/.bus-step4/bus.env (WSL)
 mkdir -p -m 700 "$(dirname "$ENV_FILE")"
 if [ ! -f "$ENV_FILE" ]; then
   umask 077
