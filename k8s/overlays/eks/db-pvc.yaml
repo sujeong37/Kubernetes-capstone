@@ -1,0 +1,9 @@
+# ⑤ 4.2 의 ebs 가 기본이라 생략해도 같지만, 어디에 저장되는지 매니페스트에 드러낸다
+#   local-path(노드 폴더) → EBS(노드와 따로 있는 디스크): 노드가 바뀌어도 같은 영역 새 노드에 다시 붙는다 (4.4)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-data
+  namespace: bus
+spec:
+  storageClassName: ebs

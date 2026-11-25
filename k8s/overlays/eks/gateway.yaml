@@ -1,0 +1,13 @@
+# ③ 입구 하나(HTTP 80)는 그대로, 처리하는 쪽만 바뀐다: Envoy Pod(NodePort 30133) → AWS ALB
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: bus
+  namespace: bus
+spec:
+  gatewayClassName: eks-alb
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: bus-alb

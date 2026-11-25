@@ -1,0 +1,11 @@
+# ⑦ 4.0.2 에서 linux/amd64 로만 빌드했다. 4.1 에서 system 노드 풀이 arm64(c6g)를 고르는 것을 봤다
+#   → 다른 아키텍처 노드에 뜨면 exec format error. general-purpose 풀(amd64)에서만 노드를 만들게 한다
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: any
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64

@@ -1,0 +1,6 @@
+# ② GatewayClass envoy 도 뺀다 — 클러스터 단위 eks-alb 는 4.2(k8s/eks-cluster)에서 만들었다
+$patch: delete
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy

@@ -1,0 +1,55 @@
+# step4.3 — ALB 설정 (EKS Auto Mode 내장 로드밸런서 컨트롤러의 확장 객체, apiVersion 은 apply-eks.sh 가 클러스터에 맞춘다)
+#   scheme internet-facing : 기본값 internal(VPC 안에서만) → 발표 시연을 위해 인터넷 공개
+#   sourceRanges MY_IP/32  : 3단계 보안 그룹처럼 「내 IP 에서만」. 실행 때 WSL 의 공인 IP 로 채운다 (Git · 화면에 남기지 않음)
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: bus-alb
+  namespace: bus
+spec:
+  scheme: internet-facing
+  sourceRanges:
+  - MY_IP/32
+---
+# targetType ip : ALB 가 Pod IP 로 바로 보낸다 (기본 instance 는 NodePort 를 거친다 — 한 단계 더, Service 도 NodePort 여야 함)
+# 상태 확인 : ALB 기본은 「/ → 200」. app 은 / 가 없으므로 readinessProbe 와 같은 /api/healthz
+# deregistration_delay 30초 : 빠지는 Pod 로 새 요청을 보내지 않는 시간 (기본 300초 — 롤링이 느려진다). preStop 5초와 함께 무중단
+apiVersion: gateway.k8s.aws/v1beta1
+kind: TargetGroupConfiguration
+metadata:
+  name: app
+  namespace: bus
+spec:
+  targetReference:
+    name: app
+  defaultConfiguration:
+    targetType: ip
+    healthCheckConfig:
+      healthCheckPath: /api/healthz
+      healthCheckProtocol: HTTP
+      healthCheckInterval: 10
+      matcher:
+        httpCode: "200"
+    targetGroupAttributes:
+    - key: deregistration_delay.timeout_seconds
+      value: "30"
+---
+apiVersion: gateway.k8s.aws/v1beta1
+kind: TargetGroupConfiguration
+metadata:
+  name: web
+  namespace: bus
+spec:
+  targetReference:
+    name: web
+  defaultConfiguration:
+    targetType: ip
+    healthCheckConfig:
+      healthCheckPath: /
+      healthCheckProtocol: HTTP
+      healthCheckInterval: 10
+      matcher:
+        httpCode: "200"
+    targetGroupAttributes:
+    - key: deregistration_delay.timeout_seconds
+      value: "30"

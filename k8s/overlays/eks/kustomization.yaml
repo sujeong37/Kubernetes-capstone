@@ -1,0 +1,25 @@
+# step4.3 — EKS 운영 overlay. base = 3단계 k8s/step3 그대로, 「EKS 라서 달라지는 값」만 여기에 적는다
+#   적용: bash infra/step4/eks/apply-eks.sh  (ACCOUNT_ID · MY_IP 자리를 실행 때 채운다 — Git 에는 없다)
+#   클러스터 단위 준비(StorageClass ebs · GatewayClass eks-alb · NetworkPolicy 켜기)는 4.2 의 k8s/eks-cluster
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../step3
+- alb.yaml                     # LoadBalancerConfiguration(인터넷 공개 · 내 IP만) + TargetGroupConfiguration(Pod IP · 상태 확인 경로)
+images:                        # ① 이미지: Docker Hub → ECR (4.0.3 에서 EC2 로 검증한 같은 태그)
+- name: sujeong79/bus-app
+  newName: ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/bus-app
+  newTag: aaa4404
+- name: sujeong79/bus-web
+  newName: ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/bus-web
+  newTag: aaa4404
+patches:
+- path: remove-envoy.yaml      # ② Envoy Gateway 전용 객체 2개 제거 (EKS 는 내장 ALB 컨트롤러)
+- path: remove-gatewayclass-envoy.yaml
+- path: gateway.yaml           # ③ Gateway: GatewayClass envoy → eks-alb, 설정은 LoadBalancerConfiguration
+- path: web-service.yaml       # ④ web Service: NodePort 30080 → ClusterIP (ALB 가 Pod IP 로 바로 보낸다)
+  target: {kind: Service, name: web}
+- path: db-pvc.yaml            # ⑤ PVC: local-path → ebs (gp3 · 암호화)
+- path: networkpolicy-app.yaml # ⑥ app 들어오는 길: Envoy namespace → ALB 가 있는 공용 서브넷
+- path: amd64.yaml             # ⑦ 이미지가 linux/amd64 만 → amd64 노드에만 (system 풀은 arm64 c6g)
+  target: {kind: Deployment, name: "app|web"}

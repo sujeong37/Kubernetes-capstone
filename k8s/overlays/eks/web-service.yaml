@@ -1,0 +1,6 @@
+# ④ NodePort 30080 은 3단계에서 「내 PC → 노드 공인 IP」로 들어오던 길. EKS 는 ALB 가 Pod IP 로 보내므로 필요 없다
+- op: replace
+  path: /spec/type
+  value: ClusterIP
+- op: remove
+  path: /spec/ports/0/nodePort

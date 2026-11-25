@@ -1,0 +1,7 @@
+# ② 3.8 의 Envoy Gateway 전용 객체 — EKS 에는 이 CRD 가 없어 그대로 두면 apply 가 실패한다
+$patch: delete
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: proxy
+  namespace: bus
