@@ -6,6 +6,7 @@ cd "$(dirname "$0")/../.."
 T=$(curl -s -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
 ACC=$(curl -s -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/dynamic/instance-identity/document | python3 -c 'import json,sys;print(json.load(sys.stdin)["accountId"])')
 M="****${ACC: -4}"; hide() { sed -u "s/$ACC/$M/g"; }
+exec > >(hide) 2>&1   # 오류 메시지까지 모든 출력에서 계정 ID 를 가린다
 render() { kubectl kustomize k8s/overlays/ec2-ecr | sed "s/ACCOUNT_ID/$ACC/g"; }
 if [ "${1:-}" = "--diff" ]; then render | kubectl diff -f - | grep -E '^[-+] ' | hide; exit 0; fi
 render | kubectl apply -f - | grep -v unchanged | hide

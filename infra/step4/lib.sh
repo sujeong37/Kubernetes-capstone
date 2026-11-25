@@ -14,4 +14,7 @@ need_aws() {
     || die "AWS 인증 실패 → aws sts get-caller-identity 로 확인 (Windows ~/.aws 를 쓰는지: echo \$AWS_SHARED_CREDENTIALS_FILE)"
   REGISTRY="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
   REGISTRY_MASKED="$(mask "$ACCOUNT").dkr.ecr.$REGION.amazonaws.com"
+  # 이 뒤로 스크립트의 모든 출력(오류 메시지 포함)에서 계정 ID 를 가린다.
+  #   AWS 오류는 "... in the registry with id '<계정>'" 처럼 계정 ID 를 그대로 담는다 (4.0.2 에서 겪음)
+  [ -n "${STEP4_MASKED:-}" ] || { export STEP4_MASKED=1; exec > >(sed -u "s/$ACCOUNT/$(mask "$ACCOUNT")/g") 2>&1; }
 }

@@ -12,7 +12,7 @@ before=$(aws ecr describe-images --repository-name bus-web --image-ids imageTag=
 say "== 전: bus-web:$TAG = ${before:0:19}…"
 printf 'FROM %s\nLABEL immutable-test="%s"\n' "$ref" "$(date +%s)" | docker build -q -t "$ref" - >/dev/null
 say "== 같은 태그, 다른 내용(라벨 추가)으로 push"
-if docker push "$ref" 2>&1 | tail -3 | hide; then :; fi
+docker push "$ref" 2>&1 | tail -3 || true
 after=$(aws ecr describe-images --repository-name bus-web --image-ids imageTag="$TAG" --query 'imageDetails[0].imageDigest' --output text)
 say "== 후: bus-web:$TAG = ${after:0:19}…"
 [ "$before" = "$after" ] && say "== 결과: 거절됨 — 태그가 가리키는 이미지는 그대로" || say "== 결과: 바뀌었다 (IMMUTABLE 이 아니다)"

@@ -41,13 +41,32 @@ for name in bus-app bus-web; do
   printf '  %-8s %-8s %-12s %-6s %-8s %s\n' "$name" "$TAG" "$plat" "${user:-root}" "$((size/1024/1024))" "${dig:0:19}…"
 done
 
-say "== 스캔 (push 때 자동, 끝날 때까지 기다림)"
-for name in bus-app bus-web; do
-  aws ecr wait image-scan-complete --repository-name "$name" --image-id imageTag="$TAG" 2>/dev/null || true
-  aws ecr describe-image-scan-findings --repository-name "$name" --image-id imageTag="$TAG" \
-    --query 'imageScanStatus.status' --output text | sed "s/^/  $name $TAG 스캔 /"
-  aws ecr describe-image-scan-findings --repository-name "$name" --image-id imageTag="$TAG" \
-    --query 'imageScanFindings.findingSeverityCounts' --output json | tr -d '\n ' | sed "s/^/    심각도별 건수 /"; echo
-done
 echo "$TAG" > infra/step4/ecr/.last-tag
 say "== 다음 단계에서 쓸 태그: $TAG (infra/step4/ecr/.last-tag)"
+
+# 스캔: 태그 aaa4404 는 「Image Index(목차)」를 가리킨다. 기본 스캔은 목차가 아니라 그 안의 linux/amd64 이미지를 스캔하므로
+#   목차에서 amd64 이미지의 digest 를 꺼내 그것으로 조회한다. 스캔 기록이 없으면 한 번 시작한다 (4.0.2 에서 겪음)
+say "== 스캔 (태그 → Image Index → linux/amd64 이미지 digest)"
+set +e
+for name in bus-app bus-web; do
+  child=$(aws ecr batch-get-image --repository-name "$name" --image-ids imageTag="$TAG" \
+    --accepted-media-types application/vnd.oci.image.index.v1+json application/vnd.docker.distribution.manifest.list.v2+json \
+      application/vnd.oci.image.manifest.v1+json application/vnd.docker.distribution.manifest.v2+json \
+    --query 'images[0].imageManifest' --output text | python3 -c '
+import json,sys
+m=json.load(sys.stdin)
+for x in m.get("manifests",[]):
+    p=x.get("platform",{})
+    if p.get("architecture")=="amd64" and p.get("os")=="linux": print(x["digest"]); break
+else:
+    print("")')
+  [ -n "$child" ] || child=$(aws ecr describe-images --repository-name "$name" --image-ids imageTag="$TAG" --query 'imageDetails[0].imageDigest' --output text)
+  if ! aws ecr describe-image-scan-findings --repository-name "$name" --image-id imageDigest="$child" >/dev/null 2>&1; then
+    aws ecr start-image-scan --repository-name "$name" --image-id imageDigest="$child" >/dev/null && say "  $name 스캔 시작 (기록 없음)"
+  fi
+  aws ecr wait image-scan-complete --repository-name "$name" --image-id imageDigest="$child" 2>/dev/null
+  st=$(aws ecr describe-image-scan-findings --repository-name "$name" --image-id imageDigest="$child" --query 'imageScanStatus.status' --output text 2>&1)
+  cnt=$(aws ecr describe-image-scan-findings --repository-name "$name" --image-id imageDigest="$child" --query 'imageScanFindings.findingSeverityCounts' --output json 2>/dev/null | tr -d '\n ')
+  say "  $name $TAG → ${child:0:19}… 스캔 $st · 심각도별 ${cnt:-없음}"
+done
+set -e
