@@ -12,6 +12,9 @@ if aws rds describe-db-instances --db-instance-identifier $DB >/dev/null 2>&1; t
 else say "== DB 인스턴스 없음"; fi
 aws rds delete-db-subnet-group --db-subnet-group-name $SUBNET_GROUP 2>/dev/null && say "== 서브넷 그룹 삭제" || say "== 서브넷 그룹 없음"
 SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=$SG_NAME --query 'SecurityGroups[0].GroupId' --output text)
-if [ "$SG" != None ]; then aws ec2 delete-security-group --group-id "$SG" && say "== 보안 그룹 $SG 삭제"; else say "== 보안 그룹 없음"; fi
+if [ "$SG" != None ]; then   # RDS 네트워크 인터페이스가 정리되는 데 1~2분 걸릴 수 있다 → 다시 시도
+  for i in $(seq 1 18); do aws ec2 delete-security-group --group-id "$SG" 2>/dev/null && { say "== 보안 그룹 $SG 삭제"; break; }; sleep 10; done
+  aws ec2 describe-security-groups --group-ids "$SG" >/dev/null 2>&1 && die "보안 그룹 $SG 가 아직 사용 중 — 잠시 뒤 다시 실행"
+else say "== 보안 그룹 없음"; fi
 rm -f ~/.bus-step4/rds
 say "== 남은 것: $(aws rds describe-db-instances --query "DBInstances[?DBInstanceIdentifier=='$DB'] | length(@)" --output text)개 인스턴스 · 스냅샷 $(aws rds describe-db-snapshots --db-instance-identifier $DB --query 'length(DBSnapshots)' --output text 2>/dev/null || echo 0)개"
